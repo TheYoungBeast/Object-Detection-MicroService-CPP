@@ -10,7 +10,7 @@ basic_detection_service<T>& basic_detection_service<T>::get_service_instance()
 template <typename T>
 std::thread basic_detection_service<T>::run_background_service()
 {
-    return std::thread([&](){ this->run_service(); });
+    return std::thread([&](){ this->run(); });
 }
 
 template <typename T>
@@ -86,7 +86,7 @@ bool basic_detection_service<T>::contains(int source_id) {
 }
 
 template <typename T>
-void basic_detection_service<T>::run_service()
+void basic_detection_service<T>::run()
 {
     unsigned current_queue_id = 0;
     
@@ -144,6 +144,31 @@ void basic_detection_service<T>::run_service()
     }   
 }
 
+
+template <typename T>
+bool basic_detection_service<T>::visit_new_src(unsigned src_id) {
+   
+    auto metrics = this->get_performance();
+    std::cout << metrics.avgProcessingTime << "ms" << "\t" << metrics.avgFPS << " FPS" << std::endl;
+
+    std::cout << "New source available: " << src_id << std::endl;
+
+    if(not this->register_source(src_id))
+        std::cout << "Source already registered" << std::endl;
+
+    return true; // acknowledge anyway
+}
+
+template <typename T>
+bool basic_detection_service<T>::visit_obsolete_src(unsigned src_id){
+    return this->unregister_source(src_id);
+}
+
+template <typename T>
+bool basic_detection_service<T>::visit_new_frame(unsigned src_id, T* frame) {
+    return this->try_add_to_queue(src_id, frame);
+}
+
 template <typename T>
 unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<T*>>& q, unsigned current_queue_id)
 {
@@ -163,5 +188,5 @@ unsigned priotitize_order_strategy<T>::choose_next_queue(std::map<unsigned, std:
 }
 
 template class basic_detection_service<cv::Mat>;
-
+template class detection_service_visitor<cv::Mat>;
 //template class basic_detection_service<cv::GpuMat>;

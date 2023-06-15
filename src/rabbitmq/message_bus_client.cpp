@@ -6,15 +6,11 @@ message_bus_client::message_bus_client(const std::string_view& address, uint thr
     : m_service(threads_hint), 
     m_handler(m_service), 
     m_connection(&m_handler, AMQP::Address("amqp://localhost/")),
-    m_channel(&m_connection)
+    channel(&m_connection)
 {
     thread = std::thread([&](){
         m_service.run();
     });
-}
-
-AMQP::TcpChannel& message_bus_client::get_channel() {
-    return this->m_channel;
 }
 
 void message_bus_client::thread_join() {
@@ -23,7 +19,7 @@ void message_bus_client::thread_join() {
 
 message_bus_client& message_bus_client::declare_exchange(const std::string_view& exchange_name, const AMQP::ExchangeType type)
 {
-    this->m_channel.declareExchange(exchange_name, type)
+    this->channel.declareExchange(exchange_name, type)
         .onSuccess([=](){
             // add spdlog here
             std::cout << "Successfuly declared " << exchange_name << " Exchange" << std::endl;
@@ -47,15 +43,15 @@ std::optional<const std::string> message_bus_client::get_binded_queue(const std:
 }
 message_bus_client& message_bus_client::add_listener(const std::string exchange, const std::string queue, AMQP::MessageCallback callback, int flags)
 {
-    this->m_channel.declareQueue(queue, flags)
+    this->channel.declareQueue(queue, flags)
         .onSuccess([&,exchange, callback](const std::string &name, uint32_t messagecount, uint32_t consumercount)
         {
-            m_channel.bindQueue(exchange, name, "");
+            channel.bindQueue(exchange, name, "");
             std::cout << "Declared queue: " << name << std::endl;
             std::cout << "Binded " << name << " queue with " << exchange << std::endl;
 
             m_binded_queues[exchange] = name;
-            auto& consumer = m_channel.consume(name);
+            auto& consumer = channel.consume(name);
             consumer.onMessage(callback);
         })
         .onError([](const char* error) {
@@ -67,15 +63,15 @@ message_bus_client& message_bus_client::add_listener(const std::string exchange,
 
 message_bus_client& message_bus_client::add_listener(const std::string exchange, AMQP::MessageCallback callback, int flags)
 {
-    this->m_channel.declareQueue(flags)
+    this->channel.declareQueue(flags)
         .onSuccess([&,exchange, callback](const std::string &name, uint32_t messagecount, uint32_t consumercount)
         {
-            m_channel.bindQueue(exchange, name, "");
+            channel.bindQueue(exchange, name, "");
             std::cout << "Declared queue: " << name << std::endl;
             std::cout << "Binded " << name << " queue with " << exchange << std::endl;
 
             m_binded_queues[exchange] = name;
-            auto& consumer = m_channel.consume(name);
+            auto& consumer = channel.consume(name);
             consumer.onMessage(callback);
         })
         .onError([](const char* error) {

@@ -22,12 +22,12 @@ class message_bus_client
     using client = message_bus_client;
     using client_ref = message_bus_client&;
     
-    private:
+    protected:
         std::thread thread;
         boost::asio::io_service m_service;
         AMQP::LibBoostAsioHandler m_handler;
         AMQP::TcpConnection m_connection;
-        AMQP::TcpChannel m_channel;
+        AMQP::TcpChannel channel;
 
         std::unordered_map<std::string, std::string> m_binded_queues = std::unordered_map<std::string, std::string>();
 
@@ -41,8 +41,6 @@ class message_bus_client
         message_bus_client(const std::string_view&, uint = 4);
 
         void thread_join();
-
-        AMQP::TcpChannel& get_channel();
         
         std::optional<const std::string> get_binded_queue(const std::string_view& exchange_name);
         client_ref declare_exchange(const std::string_view& exchange_name, const AMQP::ExchangeType exchange_type = AMQP::ExchangeType::direct);
