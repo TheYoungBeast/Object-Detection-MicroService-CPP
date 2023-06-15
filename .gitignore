@@ -33,6 +33,7 @@
 
 # Dirs
 build/
+debug/
 assets/samples/
 .vscode/
 CMakeFiles/
