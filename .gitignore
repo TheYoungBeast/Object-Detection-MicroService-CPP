@@ -40,7 +40,7 @@ CMakeFiles/
 
 # Models
 *.onnx
-!**/yolov5n.onnx
+!**/yolov8*.onnx
 
 #
 !.gitignore
