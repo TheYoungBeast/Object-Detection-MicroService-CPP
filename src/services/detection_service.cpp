@@ -76,7 +76,8 @@ bool basic_detection_service<T>::try_add_to_queue(const unsigned source_id, T* f
 template <typename T>
 bool basic_detection_service<T>::add_to_queue(const unsigned source_id, T* frame)
 {
-    throw std::runtime_error("Not implemented yet");
+    throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + std::string(" Not implemented yet"));
+    return true;
 }
 
 template <typename T>

@@ -1,5 +1,4 @@
 #include <random>
-
 #include "yolo_v8.hpp"
 
 
@@ -29,6 +28,14 @@ const std::string_view yolo_v8::get_model_name() {
     return this->model_name;
 }
 
+const std::vector<std::string>& yolo_v8::get_classes(){
+    return this->classes;
+}
+
+const std::vector<cv::Scalar>&  yolo_v8::get_colors(){
+    return this->colors;
+}
+
 void yolo_v8::load_model() 
 {
     this->network = cv::dnn::readNetFromONNX(this->dir_path+this->model_name);
@@ -54,12 +61,25 @@ cv::Mat yolo_v8::formatToSquare(const cv::Mat& source)
 }
 
 std::vector<detection> yolo_v8::object_detection(const cv::Mat& img) {
-    cv::Mat modelInput = img;
+    return this->object_detection_batch({img}).at(0);
+}
+
+
+std::vector<std::vector<detection>> yolo_v8::object_detection_batch(const std::vector<cv::Mat>& batch) 
+{
+    /* DYNAMIC BATCH SIZE IS NOT SUPPORTED AFAIR */
+    /* BUT MAYBE I WILL FIND WORKAROUND LATER */
+    /* FOR NOW PROCCES THIS FIRST IMG FROM BATCH */
+
+    if(batch.empty())
+        return {};
+
+    cv::Mat modelInput = batch[0];
 
     if (letterBoxForSquare && model_shape.width == model_shape.height)
         modelInput = formatToSquare(modelInput);
 
-    if(img.empty())
+    if(modelInput.empty())
         return {};
 
     const bool swapRB = true;
@@ -149,7 +169,7 @@ std::vector<detection> yolo_v8::object_detection(const cv::Mat& img) {
         batch_detections.emplace_back(detections);
     }
 
-    return batch_detections[0];
+    return batch_detections;
 }
 
 cv::Mat yolo_v8::apply_detections_on_image(const cv::Mat& img, const std::vector<detection>& detections) 

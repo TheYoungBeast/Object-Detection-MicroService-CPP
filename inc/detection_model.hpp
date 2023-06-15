@@ -43,7 +43,13 @@ class detection_model
 
     public:
         virtual const std::string_view get_model_name() = 0;
-        virtual std::vector<detection> object_detection(const cv::Mat& img) = 0;
+
+        virtual auto get_classes() -> const std::vector<std::string>& = 0;
+        virtual auto get_colors() -> const std::vector<cv::Scalar>& = 0;
+
+        virtual auto object_detection(const cv::Mat& img) -> std::vector<detection> = 0;
+        virtual auto object_detection_batch(const std::vector<cv::Mat>& batch) -> std::vector<std::vector<detection>> = 0;
+        
         virtual cv::Mat apply_detections_on_image(const cv::Mat& img, const std::vector<detection>& detections) = 0;
 
     public:
