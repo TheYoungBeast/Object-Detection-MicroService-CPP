@@ -32,6 +32,8 @@
 #include "inc/utils.hpp"
 #include "inc/yolo_v8.hpp"
 #include "inc/yolo_v5.hpp"
+#include "inc/background_service.hpp"
+#include "inc/processing_service.hpp"
 
 using namespace std;
 using namespace cv;
@@ -68,6 +70,8 @@ int main(int argc, const char** argv)
 
     #pragma endregion
 
+    std::vector<std::thread> background_services;
+
     #pragma region YOLO
 
     const std::chrono::seconds gpu_warm_up_time(5);
@@ -76,7 +80,8 @@ int main(int argc, const char** argv)
 
     auto& service = detection_service::get_service_instance();
     service.use_model(model_ptr);
-    auto background_service = service.run_background_service();
+
+    background_services.emplace_back(service.run_background_service());
 
     std::cout << "Starting GPU..." << std::endl;
     service.register_source(0);
@@ -91,6 +96,10 @@ int main(int argc, const char** argv)
 
     #pragma endregion YOLO
 
+    background_service* bg_processing_service = processing_service<>::get_service_instance();
+
+    background_services.emplace_back( bg_processing_service->run_background_service() );
+
     auto bus_client = message_bus_client(amqp_host);
     auto& channel = bus_client.get_channel();
 
@@ -101,7 +110,9 @@ int main(int argc, const char** argv)
         .add_listener(unregister_sources_exchange, unregister_sources_que, callback_factory::create_unregister_source_callback(channel));
 
     bus_client.thread_join();
-    background_service.join();
+    
+    for(auto& service: background_services)
+        service.join();
 
     return 0;
 }
