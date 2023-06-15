@@ -81,7 +81,7 @@ int main(int argc, const char** argv)
     std::cout << "Starting GPU..." << std::endl;
     service.register_source(0);
     auto warmup_frame = new cv::Mat(cv::Mat::zeros(model_shape, CV_8UC3));
-    service.add_to_queue(0, warmup_frame);
+    service.try_add_to_queue(0, warmup_frame);
 
     // sleep this thread
     // let background service warm up the GPU cache and connection

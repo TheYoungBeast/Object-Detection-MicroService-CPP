@@ -8,5 +8,5 @@ declare -A env_vars=(
 
 for var in "${!env_vars[@]}"; do 
     export "$var=${env_vars[$var]}";
-    echo "$var ENV SET TO: ${env_vars[$var]}";
+    echo "$var=${env_vars[$var]}";
 done
