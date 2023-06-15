@@ -72,7 +72,7 @@ int main(int argc, const char** argv)
 
     const std::chrono::seconds gpu_warm_up_time(5);
 
-    std::unique_ptr<detection_model> model_ptr(new yolo_v5(model_shape, modelsPath, model_name));
+    std::unique_ptr<detection_model> model_ptr(new yolo_v8(model_shape, modelsPath, model_name));
 
     auto& service = detection_service::get_service_instance();
     service.use_model(model_ptr);

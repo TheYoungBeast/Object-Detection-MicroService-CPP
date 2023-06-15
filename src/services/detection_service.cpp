@@ -1,4 +1,4 @@
-#include "../inc/detection_service.hpp"
+#include "detection_service.hpp"
 
 template <typename T>
 basic_detection_service<T>& basic_detection_service<T>::get_service_instance()
@@ -117,6 +117,7 @@ void basic_detection_service<T>::run_service()
         {
             auto&& results = model->object_detection(*frame_ptr);
             model->apply_detections_on_image(*frame_ptr, results);
+            cv::imwrite("view.jpg", *frame_ptr);
             ++total_frames_processed;
         }
         catch(const cv::Exception& e)
