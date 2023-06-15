@@ -32,6 +32,7 @@ make
   
 # To Do:
 - Add logger
+- Elasticsearch?
 - Add docker container
 - Add JSON Support or Protobuf for messages (que messages)
 - Refactor code
