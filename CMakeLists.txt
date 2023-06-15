@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(opencvtest VERSION 0.1.0 LANGUAGES C CXX)
+project(micro_od VERSION 0.1.0 LANGUAGES C CXX)
 
 set (CMAKE_CXX_STANDARD 17)
 
@@ -16,28 +16,24 @@ include_directories(
     ${amqpcpp_INCLUDE_DIRS} )
 
 include_directories(inc/)
-link_directories(src/)
 
-add_library(message_bus_client STATIC src/message_bus_client.cpp)
-add_library(inference STATIC src/inference.cpp)
-add_library(yolo_v8 STATIC src/yolo_v8.cpp)
-add_library(yolo_v5 STATIC src/yolo_v5.cpp)
+file(GLOB_RECURSE SOURCES
+    inc/*.h
+    inc/*.hpp
+    src/*.cpp
+)
 
-add_executable(opencvtest main.cpp)
+add_executable(micro_od main.cpp ${SOURCES})
 
-add_dependencies(opencvtest amqpcpp)
+add_dependencies(micro_od amqpcpp)
 
 target_link_libraries( 
-    opencvtest
+    micro_od
     amqpcpp 
     boost_system 
     pthread 
     dl 
     ssl
-    inference
-    message_bus_client
-    yolo_v5
-    yolo_v8
     ${OpenCV_LIBS} )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
