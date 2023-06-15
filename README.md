@@ -19,9 +19,20 @@ Object Detection MicroService C++
 - OpenCV 4.7.0 with CUDA & cuDNN support (To use GPU computing)
 - [AMQP-CPP](https://github.com/CopernicaMarketingSoftware/AMQP-CPP)
 - Boost
+
+# Build
+```
+cd ~
+git clone https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP.git
+cd Object-Detection-MicroService-CPP
+mkdir build && cd build
+cmake ..
+make
+```
   
 # To Do:
 - Add logger
+- Elasticsearch?
 - Add docker container
 - Add JSON Support or Protobuf for messages (que messages)
 - Refactor code
