@@ -38,7 +38,7 @@ class message_bus_client
          * @note to join client's thread call thread_join() method
          * @note avoid passing any non-owning objects
         */
-        message_bus_client(const std::string_view&, uint = 4);
+        message_bus_client(const std::string_view&, uint = 2);
 
         void thread_join();
         
