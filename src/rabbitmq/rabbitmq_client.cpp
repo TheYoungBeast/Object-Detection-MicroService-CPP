@@ -51,7 +51,7 @@ AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_serv
 
         auto source_id = int(field);
 
-        if(visitor->visit_new_src(source_id)) {
+        if(!visitor->visit_new_src(source_id)) {
             channel.ack(deliveryTag); // acknowledge anyway
             return;
         }
@@ -62,7 +62,6 @@ AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_serv
         channel.ack(deliveryTag);
         return;
     };
-
     return callback;
 }
 
@@ -101,7 +100,7 @@ AMQP::MessageCallback rabbitmq_client::obsolete_src_msg_callback(detection_servi
 
 AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_visitor<cv::Mat>* visitor)
 {
-    static AMQP::MessageCallback callback = [&](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
+    static AMQP::MessageCallback callback = [this, visitor](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
     {
         const std::string header = "device-id";
 
@@ -116,12 +115,12 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
         auto source_id = int(field);
 
         cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
-        cv::Mat decodedMat = cv::imdecode(rawData, cv::IMREAD_COLOR);
-        cv::Mat* ptr = new cv::Mat(decodedMat);
+        auto decodedMat = new cv::Mat();
+        cv::imdecode(rawData, cv::IMREAD_COLOR, decodedMat);
 
         auto& service = detection_service::get_service_instance();
 
-        if(visitor->visit_new_frame(source_id, ptr))
+        if(visitor->visit_new_frame(source_id, decodedMat))
             channel.ack(deliveryTag);
         
         return;
