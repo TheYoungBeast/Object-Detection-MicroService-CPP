@@ -24,7 +24,7 @@ Object Detection MicroService C++
 # Dependencies
 - [OpenCV 4.7.0](https://github.com/opencv/opencv/tree/4.7.0) with CUDA & cuDNN support (GPU computing)
 - [AMQP-CPP](https://github.com/CopernicaMarketingSoftware/AMQP-CPP)
-- Boost
+- Boost 1.8.0+ [Getting Started](https://www.boost.org/doc/libs/1_82_0/more/getting_started/unix-variants.html)
 
 # Platform
 The currently supported platforms are ``POSIX based`` only.
