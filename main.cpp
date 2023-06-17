@@ -33,6 +33,7 @@
 #include "inc/yolo_v5.hpp"
 #include "inc/background_service.hpp"
 #include "inc/processing_service.hpp"
+#include "data_publisher.hpp"
 
 using namespace std;
 using namespace cv;
@@ -107,14 +108,13 @@ int main(int argc, const char** argv)
     };
 
     auto visitor = &service;
-    auto rabbitmq = rabbitmq_client(available_sources_que, unregister_sources_que , amqp_host);
+    auto rabbitmq = std::make_shared<rabbitmq_client>(available_sources_que, unregister_sources_que , amqp_host);
 
-    rabbitmq
-        .init_exchanges(exchanges)
+    rabbitmq->init_exchanges(exchanges)
         .bind_available_sources(available_sources_exchange, visitor)
         .bind_obsolete_sources(unregister_sources_exchange, visitor);
-    
-    rabbitmq.thread_join();
+
+    rabbitmq->thread_join();
 
     #pragma endregion RABBITMQ
 
