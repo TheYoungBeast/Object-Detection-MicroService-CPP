@@ -59,7 +59,7 @@ performance_metrics basic_detection_service<T>::get_performance() {
 }
 
 template <typename T>
-bool basic_detection_service<T>::try_add_to_queue(const unsigned source_id, T* frame)
+bool basic_detection_service<T>::try_add_to_queue(const unsigned source_id, std::shared_ptr<T> frame)
 {
     if(!this->contains(source_id))
         return false;
@@ -74,7 +74,7 @@ bool basic_detection_service<T>::try_add_to_queue(const unsigned source_id, T* f
 }
 
 template <typename T>
-bool basic_detection_service<T>::add_to_queue(const unsigned source_id, T* frame)
+bool basic_detection_service<T>::add_to_queue(const unsigned source_id, std::shared_ptr<T> frame)
 {
     throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + std::string(" Not implemented yet"));
     return true;
@@ -109,7 +109,7 @@ void basic_detection_service<T>::run()
 
         std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
 
-        std::unique_ptr<T> frame_ptr(queues[current_queue_id].front());
+        auto frame_ptr = queues[current_queue_id].front();
         queues[current_queue_id].pop(); // remove front position
 
         lock.unlock(); // unlock the queue
@@ -165,14 +165,15 @@ bool basic_detection_service<T>::visit_obsolete_src(unsigned src_id){
 }
 
 template <typename T>
-bool basic_detection_service<T>::visit_new_frame(unsigned src_id, T* frame) {
+bool basic_detection_service<T>::visit_new_frame(unsigned src_id, std::shared_ptr<T> frame) {
     return this->try_add_to_queue(src_id, frame);
 }
 
 template <typename T>
-unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<T*>>& q, unsigned current_queue_id)
+unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id)
 {
-    auto it = std::max_element(q.begin(), q.end(), [](const std::pair<unsigned, std::queue<T*>> q1, const std::pair<unsigned, std::queue<T*>> q2) -> bool 
+    auto it = std::max_element(q.begin(), q.end(), 
+    [](const std::pair<unsigned, std::queue<std::shared_ptr<T>>> q1, const std::pair<unsigned,std::queue<std::shared_ptr<T>>> q2) -> bool 
     {
         return q1.second.size() < q2.second.size();
     });
@@ -182,7 +183,7 @@ unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::
 }
 
 template <typename T>
-unsigned priotitize_order_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<T*>>& q, unsigned current_queue_id)
+unsigned priotitize_order_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id)
 {
     return ++current_queue_id % q.size();
 }

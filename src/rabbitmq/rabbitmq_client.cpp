@@ -120,7 +120,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
 
         auto& service = detection_service::get_service_instance();
 
-        if(visitor->visit_new_frame(source_id, decodedMat))
+        if(visitor->visit_new_frame(source_id, std::shared_ptr<cv::Mat>(decodedMat)))
             channel.ack(deliveryTag);
         
         return;

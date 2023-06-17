@@ -37,6 +37,7 @@ template <typename T>
 class basic_detection_service : public background_service, public detection_service_visitor<T>
 {
     using class_ref = basic_detection_service<T>&;
+    using frame_queue = std::queue<std::shared_ptr<T>>;
 
     public:
         template <typename T2 = T>
@@ -45,7 +46,7 @@ class basic_detection_service : public background_service, public detection_serv
                 processing_order_strategy() = default;
                 virtual ~processing_order_strategy() = default;
 
-                virtual unsigned choose_next_queue(std::map<unsigned, std::queue<T2*>>& q, unsigned current_queue_id) = 0;
+                virtual unsigned choose_next_queue(std::map<unsigned, frame_queue>& q, unsigned current_queue_id) = 0;
         };
 
         friend class processing_order_strategy<T>;
@@ -53,7 +54,7 @@ class basic_detection_service : public background_service, public detection_serv
     private:
         const std::chrono::seconds sleep_on_empty{1};
         const unsigned max_size_per_que = 30;
-        std::map<unsigned, std::queue<T*>> queues{};
+        std::map<unsigned, frame_queue> queues{};
         std::map<unsigned, std::mutex> que_mutexes{};
         std::map<unsigned, long long> dropped_frames{};
         unsigned long long total_dropped_frames{0};
@@ -83,8 +84,8 @@ class basic_detection_service : public background_service, public detection_serv
 
         performance_metrics get_performance();
 
-        bool try_add_to_queue(const unsigned source_id, T* frame);
-        bool add_to_queue(const unsigned source_id, T* frame);
+        bool try_add_to_queue(const unsigned source_id, std::shared_ptr<T> frame);
+        bool add_to_queue(const unsigned source_id, std::shared_ptr<T> frame);
 
         virtual std::thread run_background_service() override;
 
@@ -97,14 +98,14 @@ class basic_detection_service : public background_service, public detection_serv
     public:
         virtual bool visit_new_src(unsigned src_id) override;
         virtual bool visit_obsolete_src(unsigned src_id) override;
-        virtual bool visit_new_frame(unsigned src_id, T* frame) override;
+        virtual bool visit_new_frame(unsigned src_id, std::shared_ptr<T> frame) override;
 };
 
 template <typename T>
 class prioritize_load_strategy : public basic_detection_service<T>::processing_order_strategy<T>
 {
     public:
-        virtual unsigned choose_next_queue(std::map<unsigned, std::queue<T*>>& q, unsigned current_queue_id) override;
+        virtual unsigned choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id) override;
 };
 
 template <typename T>
@@ -113,7 +114,7 @@ class priotitize_order_strategy : public basic_detection_service<T>::processing_
     public:
         priotitize_order_strategy() = default;
         virtual ~priotitize_order_strategy() = default;
-        virtual unsigned choose_next_queue(std::map<unsigned, std::queue<T*>>& q, unsigned current_queue_id) override;
+        virtual unsigned choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id) override;
 };
 
 template <typename T = cv::Mat>
@@ -125,7 +126,7 @@ class detection_service_visitor
 
         virtual bool visit_new_src(unsigned src_id) = 0;
         virtual bool visit_obsolete_src(unsigned src_id) = 0;
-        virtual bool visit_new_frame(unsigned src_id, T* frame) = 0;
+        virtual bool visit_new_frame(unsigned src_id, std::shared_ptr<T> frame) = 0;
 };
 
 #endif // DETECTION_SERVICE_H
