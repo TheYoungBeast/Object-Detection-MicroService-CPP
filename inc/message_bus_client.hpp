@@ -14,6 +14,7 @@
 
 // AMQP RabbitMQ
 #include <amqpcpp.h>
+#include <amqpcpp/envelope.h>
 #include <amqpcpp/libboostasio.h>
 
 
@@ -48,6 +49,9 @@ class message_bus_client
         client_ref add_listener(const std::string exchange, const std::string queue, AMQP::MessageCallback callback, int flags = 0);
         client_ref add_listener(const std::string exchange_name, AMQP::MessageCallback callback, int flags = 0);
         
+        bool publish(const std::string_view &exchange, const std::string_view &routingKey, const AMQP::Envelope &envelope, int flags = 0);
+        bool publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags = 0);
+
         virtual ~message_bus_client() = default;
 };
 

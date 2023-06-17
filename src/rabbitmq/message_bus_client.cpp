@@ -80,3 +80,13 @@ message_bus_client& message_bus_client::add_listener(const std::string exchange,
     
     return *this;
 }
+
+bool message_bus_client::publish(const std::string_view &exchange, const std::string_view &routingKey, const AMQP::Envelope &envelope, int flags)
+{
+    return this->channel.publish(exchange, routingKey, envelope, flags);
+}
+        
+bool message_bus_client::publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags)
+{
+    return this->publish(exchange, routingKey, AMQP::Envelope(message.data(), message.size()), flags);
+}
