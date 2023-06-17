@@ -8,6 +8,10 @@
 #include <opencv2/opencv.hpp>
 
 #include "detection_model.hpp"
+#include "background_service.hpp"
+
+template <typename T>
+class detection_service_visitor;
 
 template <typename T>
 class basic_detection_service;
@@ -30,7 +34,7 @@ struct performance_metrics
 
 // SaS Singleton as Service
 template <typename T>
-class basic_detection_service
+class basic_detection_service : public background_service, public detection_service_visitor<T>
 {
     using class_ref = basic_detection_service<T>&;
 
@@ -82,11 +86,18 @@ class basic_detection_service
         bool try_add_to_queue(const unsigned source_id, T* frame);
         bool add_to_queue(const unsigned source_id, T* frame);
 
-        std::thread run_background_service();
+        virtual std::thread run_background_service() override;
 
         bool contains(int source_id);
+
     private:
-        void run_service();
+        virtual void run() override;
+
+        // Visitor
+    public:
+        virtual bool visit_new_src(unsigned src_id) override;
+        virtual bool visit_obsolete_src(unsigned src_id) override;
+        virtual bool visit_new_frame(unsigned src_id, T* frame) override;
 };
 
 template <typename T>
@@ -103,6 +114,18 @@ class priotitize_order_strategy : public basic_detection_service<T>::processing_
         priotitize_order_strategy() = default;
         virtual ~priotitize_order_strategy() = default;
         virtual unsigned choose_next_queue(std::map<unsigned, std::queue<T*>>& q, unsigned current_queue_id) override;
+};
+
+template <typename T = cv::Mat>
+class detection_service_visitor
+{
+    public:
+        detection_service_visitor() = default;
+        virtual ~detection_service_visitor() = default;
+
+        virtual bool visit_new_src(unsigned src_id) = 0;
+        virtual bool visit_obsolete_src(unsigned src_id) = 0;
+        virtual bool visit_new_frame(unsigned src_id, T* frame) = 0;
 };
 
 #endif // DETECTION_SERVICE_H

@@ -26,9 +26,8 @@
 
 // MISC
 #include "inc/detection_service.hpp"
-#include "inc/message_bus_client.hpp"
+#include "inc/rabbitmq_client.hpp"
 #include "inc/missing_environment_variable.hpp"
-#include "inc/callback_factory.hpp"
 #include "inc/utils.hpp"
 #include "inc/yolo_v8.hpp"
 #include "inc/yolo_v5.hpp"
@@ -90,7 +89,7 @@ int main(int argc, const char** argv)
 
     // sleep this thread
     // let background service warm up the GPU cache and connection
-    // so it won't clouge up queues with pending frames from rabbitmq client
+    // so it won't clog up queues with pending frames from rabbitmq client
     std::this_thread::sleep_for(gpu_warm_up_time);
     service.unregister_source(0);
 
@@ -100,17 +99,25 @@ int main(int argc, const char** argv)
 
     background_services.emplace_back( bg_processing_service->run_background_service() );
 
-    auto bus_client = message_bus_client(amqp_host);
-    auto& channel = bus_client.get_channel();
+    #pragma region RABBITMQ
 
-    bus_client.declare_exchange(available_sources_exchange, AMQP::ExchangeType::fanout)
-        .declare_exchange(unregister_sources_exchange, AMQP::ExchangeType::fanout);
+    auto exchanges = std::vector {
+        std::make_pair(available_sources_exchange, AMQP::ExchangeType::fanout),
+        std::make_pair(unregister_sources_exchange, AMQP::ExchangeType::fanout)
+    };
 
-    bus_client.add_listener(available_sources_exchange, available_sources_que, callback_factory::create_new_source_callback(channel))
-        .add_listener(unregister_sources_exchange, unregister_sources_que, callback_factory::create_unregister_source_callback(channel));
+    auto visitor = &service;
+    auto rabbitmq = rabbitmq_client(available_sources_que, unregister_sources_que , amqp_host);
 
-    bus_client.thread_join();
+    rabbitmq
+        .init_exchanges(exchanges)
+        .bind_available_sources(available_sources_exchange, visitor)
+        .bind_obsolete_sources(unregister_sources_exchange, visitor);
     
+    rabbitmq.thread_join();
+
+    #pragma endregion RABBITMQ
+
     for(auto& service: background_services)
         service.join();
 
