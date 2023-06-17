@@ -1,6 +1,12 @@
 # Object-Detection-MicroService-CPP
 Object Detection MicroService C++
 
+# The Idea
+- The idea is to create self-organizing micro-services with very loose coupling. By self-organizing I mean micro-services that are aware of their workload and based on that they decide how much new sources can handle. If it happens that for some reason microservice cannot handle as many sources as it declared it is obligated to push this source to the 'available sources' queue so another microservice (if available) can handle it.
+- The source can also be marked as ``obsolete`` and should be dropped immediately and no longer be processed by the service.
+- The primary aim is performance, and the ability to deploy this solution into any system.
+  
+
 # Architecture Assumption
 - Use RabbitMQ Server/Client
 - Single instance of Background Service (Detection Service in this case)
@@ -16,9 +22,13 @@ Object Detection MicroService C++
 - Completely switch to GPU algorithms to further improve the performance
 
 # Dependencies
-- OpenCV 4.7.0 with CUDA & cuDNN support (To use GPU computing)
+- [OpenCV 4.7.0](https://github.com/opencv/opencv/tree/4.7.0) with CUDA & cuDNN support (GPU computing)
 - [AMQP-CPP](https://github.com/CopernicaMarketingSoftware/AMQP-CPP)
 - Boost
+
+# Platform
+The currently supported platforms are ``POSIX based`` only.
+It is due to limitations in AMQP-CPP TcpHandler. (It is possible to support Windows by implementing TcpHandler for Windows)
 
 # Build
 ```
