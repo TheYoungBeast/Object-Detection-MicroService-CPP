@@ -23,10 +23,10 @@ class data_publisher
         data_publisher(std::shared_ptr<rabbitmq_client> client);
         virtual ~data_publisher() = default;
 
-        std::string to_json(detection d);
+        std::string to_json(const std::vector<detection>& results);
 
-        bool publish(unsigned src_id, detection d);
-        bool publish(unsigned src_id, const std::vector<detection> results, unsigned limit = 0);
+        bool publish(unsigned src_id, const std::vector<detection>& results);
+        bool publish(unsigned src_id, const std::vector<detection>& results, unsigned limit);
 
     private:
         void declare_exchange(unsigned src_id);
