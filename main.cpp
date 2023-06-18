@@ -33,7 +33,7 @@
 #include "inc/yolo_v5.hpp"
 #include "inc/background_service.hpp"
 #include "inc/processing_service.hpp"
-#include "data_publisher.hpp"
+#include "inc/data_publisher.hpp"
 
 using namespace std;
 using namespace cv;
@@ -96,7 +96,7 @@ int main(int argc, const char** argv)
 
     #pragma endregion YOLO
 
-    background_service* bg_processing_service = processing_service<>::get_service_instance();
+    background_service* bg_processing_service = processing_service::get_service_instance();
 
     background_services.emplace_back( bg_processing_service->run_background_service() );
 
@@ -113,6 +113,9 @@ int main(int argc, const char** argv)
     rabbitmq->init_exchanges(exchanges)
         .bind_available_sources(available_sources_exchange, visitor)
         .bind_obsolete_sources(unregister_sources_exchange, visitor);
+
+    auto publisher = std::make_shared<data_publisher>(rabbitmq);
+    processing_service::get_service_instance()->set_publishers(publisher, nullptr);
 
     rabbitmq->thread_join();
 

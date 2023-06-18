@@ -12,25 +12,22 @@ void data_publisher::declare_exchange(unsigned src_id)
     this->declared_exchanges.try_emplace(src_id, exchange);
 }
 
-bool data_publisher::publish(unsigned src_id, detection result)
+std::string data_publisher::to_json(const std::vector<detection>& results)
 {
-    if(!is_declared(src_id))
-        declare_exchange(src_id);
+   boost::json::array array;
 
-    return rabbitmq->publish(declared_exchanges[src_id], "", to_json(result));
-}
-
-std::string data_publisher::to_json(detection d)
-{
-    boost::json::object obj;
-    boost::json::serialize(obj);
-    obj["id"] = d.class_id;
-    obj["label"] = d.class_name;
-    obj["confidence"] = d.confidence;
-    obj["color"] = { d.color[0], d.color[1], d.color[2] };
-    obj["box"] = { {"x", d.box.x}, {"y", d.box.y}, {"width", d.box.width}, {"height", d.box.height} };
+    for(auto& det: results)
+    {
+        boost::json::object obj;
+        obj["id"] = det.class_id;
+        obj["label"] = det.class_name;
+        obj["confidence"] = det.confidence*100;
+        obj["color"] = { det.color[0], det.color[1], det.color[2] };
+        obj["box"] = { {"x", det.box.x}, {"y", det.box.y}, {"width", det.box.width}, {"height", det.box.height} };
+        array.emplace_back(obj);
+    }
     
-    return boost::json::serialize(obj);
+    return boost::json::serialize(array);
 }
 
 bool data_publisher::is_declared(unsigned src_id)
@@ -38,19 +35,26 @@ bool data_publisher::is_declared(unsigned src_id)
     return this->declared_exchanges.find(src_id) != this->declared_exchanges.end();
 }
 
-bool data_publisher::publish(unsigned src_id, const std::vector<detection> results, unsigned limit)
+bool data_publisher::publish(unsigned src_id, const std::vector<detection>& result)
 {
-    auto threshold = limit == 0 ? std::numeric_limits<unsigned>::max() : limit;
-    auto counter = 0;
+    if(!is_declared(src_id))
+        declare_exchange(src_id);
+    
+    return rabbitmq->publish(declared_exchanges[src_id], "", to_json(result));
+}
 
-    for(auto& result: results)
-    {
-        if(counter == threshold)
-            break;
+bool data_publisher::publish(unsigned src_id, const std::vector<detection>& results, unsigned limit)
+{
+    auto shift = limit == 0 ? results.size() : limit;
 
-        this->publish(src_id, result);
-        ++counter;
-    }
+    //auto end = std::distance(results.begin()+shift, res)
+
+    //auto subvec = std::vector<detection>(results.begin(), results.begin()+shift);
+
+    if(results.empty())
+        this->publish(src_id, {});
+    else
+        this->publish(src_id, results);
 
     return true;
 }

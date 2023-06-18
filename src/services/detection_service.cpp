@@ -1,4 +1,5 @@
 #include "detection_service.hpp"
+#include "processing_service.hpp"
 
 template <typename T>
 basic_detection_service<T>& basic_detection_service<T>::get_service_instance()
@@ -107,19 +108,20 @@ void basic_detection_service<T>::run()
 
         performance_meter.start();
 
-        std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
+        auto frame_ptr = queues[current_queue_id].front(); // fetch
 
-        auto frame_ptr = queues[current_queue_id].front();
-        queues[current_queue_id].pop(); // remove front position
-
-        lock.unlock(); // unlock the queue
-
+        if(!frame_ptr)
+            continue;
+        
         try
         {
             auto&& results = model->object_detection(*frame_ptr);
             model->apply_detections_on_image(*frame_ptr, results);
-            cv::imwrite("view.jpg", *frame_ptr);
+            //cv::imwrite("view.jpg", *frame_ptr);
             ++total_frames_processed;
+
+            auto processing = processing_service::get_service_instance();
+            processing->push_results(current_queue_id, frame_ptr, results);
         }
         catch(const cv::Exception& e)
         {
@@ -135,12 +137,19 @@ void basic_detection_service<T>::run()
         if(total_frames_processed == 1)
             performance_meter.reset();
 
-        std::cout 
-        << "Q:" << current_queue_id 
-        << "\tP:" << queues[current_queue_id].size() 
-        << "\tavgT:" << performance_meter.getAvgTimeMilli() << "ms"
-        << "\tavgFPS:" << performance_meter.getFPS()
-        << std::endl;
+        if(total_frames_processed % 60 == 0)
+        {
+            std::cout 
+            << "Q:" << current_queue_id 
+            << "\tP:" << queues[current_queue_id].size() 
+            << "\tavgT:" << performance_meter.getAvgTimeMilli() << "ms"
+            << "\tavgFPS:" << performance_meter.getFPS()
+            << std::endl;
+        }
+
+        std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
+        queues[current_queue_id].pop(); // remove front position
+        lock.unlock(); // unlock the queue
     }   
 }
 
@@ -178,14 +187,21 @@ unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::
         return q1.second.size() < q2.second.size();
     });
 
-    auto dist = std::distance(q.begin(), it);
-    return dist < 0 ? 0 : dist;
+    return (*it).first;
 }
 
 template <typename T>
 unsigned priotitize_order_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id)
 {
-    return ++current_queue_id % q.size();
+    auto it = q.find(current_queue_id);
+
+    if(it == q.end())
+        return (*q.begin()).first;
+
+    if(it++ != q.end())
+        return (*it).first;
+
+    return (*q.begin()).first;
 }
 
 template class basic_detection_service<cv::Mat>;
