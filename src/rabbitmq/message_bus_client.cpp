@@ -8,6 +8,11 @@ message_bus_client::message_bus_client(const std::string_view& address, uint thr
     m_connection(&m_handler, AMQP::Address("amqp://localhost/")),
     channel(&m_connection)
 {
+    channel.onError([this](const char* message) {
+        std::cerr << message << std::endl;
+        channel.resume();
+    });
+
     thread = std::thread([&](){
         m_service.run();
     });
