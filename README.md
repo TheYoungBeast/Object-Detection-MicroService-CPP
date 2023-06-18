@@ -72,10 +72,64 @@ Microservice expects messages in JSON format in the ``AVAILABLE_SOURCES`` queue.
 Source exchanges are expected to be the type of FanOut. Microservice will declare an exchange with the given name in the case where it was not declared yet.
 It will allow you to bind other queues and integrate other services e.g. you may share 1 camera device among multiple different services (object detection, face recognition, CCTV, etc.)
 
-
+Example output: (Single message)
+```
+[
+    {
+        "id":62,
+        "label":"tv",
+        "confidence":80.86636352539062,
+        "color":[
+            214,
+            137,
+            197
+        ],
+        "box":{
+            "x":0,
+            "y":295,
+            "width":162,
+            "height":222
+        }
+    },
+    {
+        "id":0,
+        "label":"person",
+        "confidence":70.75984191894531,
+        "color":[
+            157,
+            169,
+            165
+        ],
+        "box":{
+            "x":255,
+            "y":121,
+            "width":224,
+            "height":515
+        }
+    },
+    {
+        "id":66,
+        "label":"keyboard",
+        "confidence":62.86008834838867,
+        "color":[
+            250,
+            95,
+            102
+        ],
+        "box":{
+            "x":137,
+            "y":446,
+            "width":118,
+            "height":97
+        }
+    }
+]
+```
+Microservice will create an output exchange for each source. (But now when I think of that I'll probably change it to 1 exchange and use routing keys)
   
 # To Do:
 - Add logger
+- Attach timestamps to results 
 - Elasticsearch?
 - Add docker container
 - ~~Add JSON/Protobuf Support~~
