@@ -1,7 +1,7 @@
 #include "processing_service.hpp"
 
 template<typename T>
-processing_service<T>* processing_service<T>::exclude_objects(std::vector<unsigned> excluded) {
+basic_processing_service<T>* basic_processing_service<T>::exclude_objects(std::vector<unsigned> excluded) {
     for(const auto class_id: excluded)
         this->excluded.insert(class_id);
 
@@ -9,7 +9,7 @@ processing_service<T>* processing_service<T>::exclude_objects(std::vector<unsign
 }
 
 template<typename T>
-processing_service<T>* processing_service<T>::set_objects_threshold(std::map<unsigned, float>& map)
+basic_processing_service<T>* basic_processing_service<T>::set_objects_threshold(std::map<unsigned, float>& map)
 {
     this->thresholds.merge(map);
 
@@ -17,7 +17,7 @@ processing_service<T>* processing_service<T>::set_objects_threshold(std::map<uns
 }
 
 template<typename T>
-processing_service<T>* processing_service<T>::set_objects_threshold(const std::pair<unsigned, float>& pair)
+basic_processing_service<T>* basic_processing_service<T>::set_objects_threshold(const std::pair<unsigned, float>& pair)
 {
     this->thresholds.try_emplace(pair.first, pair.second);
 
@@ -25,41 +25,41 @@ processing_service<T>* processing_service<T>::set_objects_threshold(const std::p
 }
 
 template<typename T>
-processing_service<T>* processing_service<T>::set_labels(std::vector<std::string>& labels) {
+basic_processing_service<T>* basic_processing_service<T>::set_labels(std::vector<std::string>& labels) {
     this->labels = labels;
 
     return this;
 }
 
 template<typename T>
-processing_service<T>* processing_service<T>::set_applied_detections_limit(unsigned limit) {
+basic_processing_service<T>* basic_processing_service<T>::set_applied_detections_limit(unsigned limit) {
     this->boxes_limit = limit;
 
     return this;
 }
 
 template<typename T>
-processing_service<T>* processing_service<T>::set_global_threshold(float th) {
+basic_processing_service<T>* basic_processing_service<T>::set_global_threshold(float th) {
     this->g_confidence_threshold = th;
 
     return this;
 }
         
 template<typename T>
-processing_service<T>* processing_service<T>::get_service_instance() {
-    static processing_service<T> service; // lazdy
+basic_processing_service<T>* basic_processing_service<T>::get_service_instance() {
+    static basic_processing_service<T> service; // lazdy
 
     return &service;
 }
 
 template <typename T>
-std::thread processing_service<T>::run_background_service()
+std::thread basic_processing_service<T>::run_background_service()
 {
     return std::thread([&]() { this->run(); });
 }
 
 template <typename T>
-T& processing_service<T>::apply_results(T& img, const std::vector<detection>& results)
+T& basic_processing_service<T>::apply_results(T& img, const std::vector<detection>& results)
 {
     if(results.empty())
         return img;
@@ -105,12 +105,42 @@ T& processing_service<T>::apply_results(T& img, const std::vector<detection>& re
 }
 
 template <typename T>
-void processing_service<T>::run()
+void basic_processing_service<T>::push_results(unsigned src_id, std::shared_ptr<T> frame, const std::vector<detection>& detections)
+{
+    std::lock_guard lock(sync);
+    results.emplace(std::make_tuple(src_id, frame, detections));
+}
+
+template<typename T>
+basic_processing_service<T>* basic_processing_service<T>::set_publishers(std::shared_ptr<data_publisher> publisher_data, std::shared_ptr<data_publisher> publisher_frame)
+{
+    json_publisher = publisher_data;
+    return this;
+}
+
+template <typename T>
+void basic_processing_service<T>::run()
 {
     while(true)
     {
-        std::this_thread::sleep_for(std::chrono::hours(1));
+        if(results.empty())
+        {
+            //std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
+
+        auto& [id, frame, detections] = results.front();
+
+        if(json_publisher)
+            json_publisher->publish(id, detections, 5);
+
+        this->apply_results(*frame, detections);
+
+        std::unique_lock lock(sync);
+        results.pop();
+        lock.unlock();
     }
 }
 
-template class processing_service<cv::Mat>;
+template class basic_processing_service<cv::Mat>;

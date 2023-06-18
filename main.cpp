@@ -33,6 +33,7 @@
 #include "inc/yolo_v5.hpp"
 #include "inc/background_service.hpp"
 #include "inc/processing_service.hpp"
+#include "inc/data_publisher.hpp"
 
 using namespace std;
 using namespace cv;
@@ -84,7 +85,7 @@ int main(int argc, const char** argv)
 
     std::cout << "Starting GPU..." << std::endl;
     service.register_source(0);
-    auto warmup_frame = new cv::Mat(cv::Mat::zeros(model_shape, CV_8UC3));
+    auto warmup_frame = std::shared_ptr<cv::Mat>(new cv::Mat(cv::Mat::zeros(model_shape, CV_8UC3)));
     service.try_add_to_queue(0, warmup_frame);
 
     // sleep this thread
@@ -95,7 +96,7 @@ int main(int argc, const char** argv)
 
     #pragma endregion YOLO
 
-    background_service* bg_processing_service = processing_service<>::get_service_instance();
+    background_service* bg_processing_service = processing_service::get_service_instance();
 
     background_services.emplace_back( bg_processing_service->run_background_service() );
 
@@ -107,14 +108,16 @@ int main(int argc, const char** argv)
     };
 
     auto visitor = &service;
-    auto rabbitmq = rabbitmq_client(available_sources_que, unregister_sources_que , amqp_host);
+    auto rabbitmq = std::make_shared<rabbitmq_client>(available_sources_que, unregister_sources_que , amqp_host);
 
-    rabbitmq
-        .init_exchanges(exchanges)
+    rabbitmq->init_exchanges(exchanges)
         .bind_available_sources(available_sources_exchange, visitor)
         .bind_obsolete_sources(unregister_sources_exchange, visitor);
-    
-    rabbitmq.thread_join();
+
+    auto publisher = std::make_shared<data_publisher>(rabbitmq);
+    processing_service::get_service_instance()->set_publishers(publisher, nullptr);
+
+    rabbitmq->thread_join();
 
     #pragma endregion RABBITMQ
 

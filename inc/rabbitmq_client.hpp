@@ -6,8 +6,16 @@
 #include <vector>
 #include <string>
 
+#include <boost/property_tree/json_parser.hpp>
+
 #include "message_bus_client.hpp"
 #include "detection_service.hpp"
+
+struct source
+{
+    unsigned id;
+    std::string exchange;
+};
 
 class rabbitmq_client : public message_bus_client
 {
@@ -25,6 +33,7 @@ class rabbitmq_client : public message_bus_client
         rabbitmq_client& bind_available_sources(const std::string& exchange, detection_service_visitor<cv::Mat>* visitor);
         rabbitmq_client& bind_obsolete_sources(const std::string& exchange, detection_service_visitor<cv::Mat>* visitor);
 
+        bool validate_json(boost::property_tree::ptree ptree, source& src);
 
     private:
         AMQP::MessageCallback available_src_msg_callback(detection_service_visitor<cv::Mat>* visitor);

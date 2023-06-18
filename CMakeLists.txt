@@ -8,7 +8,9 @@ enable_testing()
 
 find_package( OpenCV REQUIRED )
 find_package( amqpcpp REQUIRED )
-find_package( Boost REQUIRED )
+find_package( 
+    Boost 1.80.0 REQUIRED 
+    COMPONENTS  json)
 
 include_directories( 
     ${OpenCV_INCLUDE_DIRS} 
@@ -30,7 +32,8 @@ add_dependencies(micro_od amqpcpp)
 target_link_libraries( 
     micro_od
     amqpcpp 
-    boost_system 
+    boost_system
+    boost_json 
     pthread 
     dl 
     ssl

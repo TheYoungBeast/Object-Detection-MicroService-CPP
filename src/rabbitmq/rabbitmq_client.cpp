@@ -34,30 +34,70 @@ rabbitmq_client& rabbitmq_client::bind_obsolete_sources(const std::string& excha
     return *this;
 }
 
+bool rabbitmq_client::validate_json(boost::property_tree::ptree ptree, source& src)
+{
+    auto id = ptree.get_child_optional("id");
+
+    if(!id.has_value())
+        return false;
+
+    auto exchange = ptree.get_child_optional("exchange");
+
+    if(!exchange.has_value())
+        return false;
+
+    try
+    {
+        src.id = id->get<unsigned>("");
+        src.exchange = exchange->get<std::string>("");
+    }
+    catch (const boost::property_tree::ptree_error& e) 
+    {
+        std::cerr << e.what() << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_service_visitor<cv::Mat>* visitor) 
 {
     static AMQP::MessageCallback callback = [this, visitor](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
     {
-        std::string exchangeName = std::string(message.body(), message.bodySize());
-        const std::string header = "device-id";
+        auto body = std::string(message.body(), message.bodySize());
 
-        auto& field = message.headers().get(header);
-        if(!field.isInteger())
+        std::stringstream ss;
+        ss << body;
+
+        boost::property_tree::ptree ptree;
+        try
         {
-            std::cerr << "Header (" + header + ") field invalid type" << std::endl;
-            channel.ack(deliveryTag); // acknowledge anyway
+            boost::property_tree::read_json(ss, ptree);
+        }
+        catch (const boost::property_tree::json_parser_error& e)
+        {
+            std::cerr << e.what() << "\t" << e.message() << "\t" << "At line: " << e.line() << std::endl;
+            channel.ack(deliveryTag);
             return;
         }
 
-        auto source_id = int(field);
+        source src;
+        if(!validate_json(ptree, src))
+        {
+            std::cerr << "Invalid JSON" << std::endl;
+            return;
+        }
 
-        if(!visitor->visit_new_src(source_id)) {
+        std::cout << src.id << " " << src.exchange << std::endl;
+
+        if(!visitor->visit_new_src(src.id)) {
             channel.ack(deliveryTag); // acknowledge anyway
             return;
         }
 
         auto callback = this->new_frame_msg_callback(visitor);
-        this->add_listener(exchangeName, callback, AMQP::exclusive | AMQP::autodelete);
+        this->declare_exchange(src.exchange, AMQP::ExchangeType::fanout);
+        this->add_listener(src.exchange, callback, AMQP::exclusive | AMQP::autodelete);
 
         channel.ack(deliveryTag);
         return;
@@ -120,7 +160,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
 
         auto& service = detection_service::get_service_instance();
 
-        if(visitor->visit_new_frame(source_id, decodedMat))
+        if(visitor->visit_new_frame(source_id, std::shared_ptr<cv::Mat>(decodedMat)))
             channel.ack(deliveryTag);
         
         return;

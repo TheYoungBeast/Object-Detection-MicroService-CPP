@@ -42,5 +42,9 @@ CMakeFiles/
 *.onnx
 !**/yolov8*.onnx
 
+# Images
+*.jpg
+*.png
+
 #
 !.gitignore

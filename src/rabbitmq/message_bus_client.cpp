@@ -8,6 +8,11 @@ message_bus_client::message_bus_client(const std::string_view& address, uint thr
     m_connection(&m_handler, AMQP::Address("amqp://localhost/")),
     channel(&m_connection)
 {
+    channel.onError([this](const char* message) {
+        std::cerr << message << std::endl;
+        channel.resume();
+    });
+
     thread = std::thread([&](){
         m_service.run();
     });
@@ -79,4 +84,14 @@ message_bus_client& message_bus_client::add_listener(const std::string exchange,
         });
     
     return *this;
+}
+
+bool message_bus_client::publish(const std::string_view &exchange, const std::string_view &routingKey, const AMQP::Envelope &envelope, int flags)
+{
+    return this->channel.publish(exchange, routingKey, envelope, flags);
+}
+        
+bool message_bus_client::publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags)
+{
+    return this->publish(exchange, routingKey, AMQP::Envelope(message.data(), message.size()), flags);
 }
