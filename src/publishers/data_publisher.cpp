@@ -1,8 +1,9 @@
 #include "../../inc/data_publisher.hpp"
 
 data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client)
-    : rabbitmq(client), data_converter(std::make_unique<converter>(new json_converter()))
+    : rabbitmq(client), data_converter( std::unique_ptr<converter>(new json_converter()) )
 {
+    
 }
 
 data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client, std::unique_ptr<converter>& custom_converter)

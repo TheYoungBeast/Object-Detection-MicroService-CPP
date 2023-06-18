@@ -18,6 +18,7 @@ class data_publisher
         class converter
         {
             public:
+                virtual ~converter() = default;
                 /**
                  * @brief Converts detections list into another data format
                 */
@@ -54,13 +55,17 @@ class data_publisher
 /**
  * @brief DATA => JSON Converter
 */
-class json_converter : data_publisher::converter
+class json_converter : public data_publisher::converter
 {
-    /**
-     * @brief Converts detections list into JSON data
-     * @returns JSON
-    */
-    virtual std::string convert(const std::vector<detection>& results) override;
+    public:
+        json_converter() = default;
+        virtual ~json_converter() = default;
+
+        /**
+         * @brief Converts detections list into JSON data
+         * @returns JSON
+        */
+        virtual std::string convert(const std::vector<detection>& results) override;
 };
 
 #endif // DATA_PUBLISHER_H
