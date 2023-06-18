@@ -162,7 +162,6 @@ std::vector<std::vector<detection>> yolo_v8::object_detection_batch(const std::v
             result.class_name = classes[result.class_id];
             result.box = boxes[idx];
 
-            std::cout << result.class_name << std::endl;
             detections.push_back(result);
         }
 
