@@ -1,7 +1,12 @@
 #include "../../inc/data_publisher.hpp"
 
 data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client)
-    : rabbitmq(client)
+    : rabbitmq(client), data_converter(std::make_unique<converter>(new json_converter()))
+{
+}
+
+data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client, std::unique_ptr<converter>& custom_converter)
+    : rabbitmq(client), data_converter(std::move(custom_converter))
 {
 }
 
@@ -12,7 +17,7 @@ void data_publisher::declare_exchange(unsigned src_id)
     this->declared_exchanges.try_emplace(src_id, exchange);
 }
 
-std::string data_publisher::to_json(const std::vector<detection>& results)
+std::string json_converter::convert(const std::vector<detection>& results)
 {
    boost::json::array array;
 
@@ -40,7 +45,7 @@ bool data_publisher::publish(unsigned src_id, const std::vector<detection>& resu
     if(!is_declared(src_id))
         declare_exchange(src_id);
     
-    return rabbitmq->publish(declared_exchanges[src_id], "", to_json(result));
+    return rabbitmq->publish(declared_exchanges[src_id], "", data_converter->convert(result) );
 }
 
 bool data_publisher::publish(unsigned src_id, const std::vector<detection>& results, unsigned limit)
