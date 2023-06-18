@@ -12,6 +12,10 @@
 
 #include "rabbitmq_client.hpp"
 
+/**
+ * @note Join Rabbitmq client before injecting it to the class
+ * @note Do not share rabbitmq client among threads 
+*/
 class data_publisher
 {
     public:

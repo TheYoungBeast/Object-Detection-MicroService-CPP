@@ -114,10 +114,17 @@ int main(int argc, const char** argv)
         .bind_available_sources(available_sources_exchange, visitor)
         .bind_obsolete_sources(unregister_sources_exchange, visitor);
 
-    auto publisher = std::make_shared<data_publisher>(rabbitmq);
+    auto rabbitmq_publisher = std::make_shared<rabbitmq_client>(amqp_host);
+
+    #pragma region PUBLISHER
+
+    auto publisher = std::make_shared<data_publisher>(rabbitmq_publisher);
     processing_service::get_service_instance()->set_publishers(publisher, nullptr);
+    
+    #pragma endregion PUBLISHER
 
     rabbitmq->thread_join();
+    rabbitmq_publisher->thread_join();
 
     #pragma endregion RABBITMQ
 

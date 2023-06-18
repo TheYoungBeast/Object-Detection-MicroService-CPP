@@ -18,6 +18,10 @@
 #include <amqpcpp/libboostasio.h>
 
 
+/**
+ * @warning Do not share among threads. Connection and channel are not thread-safe because of the implementation of AMQP-CPP
+ * @note see https://github.com/CopernicaMarketingSoftware/AMQP-CPP/issues/92
+*/
 class message_bus_client
 {
     using client = message_bus_client;
