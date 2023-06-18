@@ -1,12 +1,12 @@
 # Object-Detection-MicroService-CPP
-Object Detection MicroService C++
+Object Detection MicroService C++.
+Current performance ~``80FPS`` single service instance. (GTX 1080Ti) 
 
 # The Idea
 - The idea is to create self-organizing micro-services with very loose coupling. By self-organizing I mean micro-services that are aware of their workload and based on that they decide how much new sources can handle. If it happens that for some reason microservice cannot handle as many sources as it declared it is obligated to push this source to the 'available sources' queue so another microservice (if available) can handle it.
 - The source can also be marked as ``obsolete`` and should be dropped immediately and no longer be processed by the service.
 - The primary aim is performance, and the ability to deploy this solution into any system.
   
-
 # Architecture Assumption
 - Use RabbitMQ Server/Client
 - Single instance of Background Service (Detection Service in this case)
@@ -52,9 +52,9 @@ make
 - Add logger
 - Elasticsearch?
 - Add docker container
-- Add JSON Support or Protobuf for messages (que messages)
+- ~~Add JSON/Protobuf Support~~
 - Refactor code
-- Support at least Yolo V5 & Yolo V8
+- ~~Support at least Yolo V5 & Yolo V8~~
 
 # Contact?
 Find me on: <br />
