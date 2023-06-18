@@ -30,7 +30,14 @@ class detection_model
         std::vector<std::string> classes{};
 
     protected:
+        /**
+         * Loads dnn network model from the path passed in the constructor
+        */
         virtual void load_model() = 0;
+
+        /**
+         * Loads classes (objects labels)
+        */
         virtual void load_classes() = 0;
 
     protected:
@@ -42,14 +49,43 @@ class detection_model
         void operator= (const detection_model&) = delete;
 
     public:
+        /**
+         * @returns name of dnn model (e.g. yolov8.onnx)
+        */
         virtual const std::string_view get_model_name() = 0;
 
+        /**
+         * @returns classes that a model is able to detect
+        */
         virtual auto get_classes() -> const std::vector<std::string>& = 0;
+
+        /**
+         * @returns colors associated with object classes
+        */
         virtual auto get_colors() -> const std::vector<cv::Scalar>& = 0;
 
+        /**
+         * @brief Performs object detection on a given image
+         * @param img The image on which object detection will be performed
+         * @returns list of all detected objects
+        */
         virtual auto object_detection(const cv::Mat& img) -> std::vector<detection> = 0;
+        
+        /**
+         * Performs object detection on a batch of images
+         * @param batch batch of images
+         * @returns list for each image in the batch with detected objects per image
+        */
         virtual auto object_detection_batch(const std::vector<cv::Mat>& batch) -> std::vector<std::vector<detection>> = 0;
         
+        /**
+         * @breif Applies detection results (bounding boxes) directly on a given image.
+         * @param img source image
+         * @param detections list of bounding boxes to apply
+         * @note It will apply the whole detection vector you passed to the function.
+         * @note Filter results before applying them to the image
+         * @returns modified image
+        */
         virtual cv::Mat apply_detections_on_image(const cv::Mat& img, const std::vector<detection>& detections) = 0;
 
     public:

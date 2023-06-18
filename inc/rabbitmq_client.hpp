@@ -17,6 +17,10 @@ struct source
     std::string exchange;
 };
 
+/**
+ * @warning Do not share among threads. Connection and channel are not thread-safe because of the implementation of AMQP-CPP
+ * @note see https://github.com/CopernicaMarketingSoftware/AMQP-CPP/issues/92
+*/
 class rabbitmq_client : public message_bus_client
 {
     private:
