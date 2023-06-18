@@ -3,7 +3,7 @@ Object Detection MicroService C++.
 Current performance ~``80FPS`` single service instance. (GTX 1080Ti) 
 
 # The Idea
-- The idea is to create self-organizing micro-services with very loose coupling. By self-organizing I mean micro-services that are aware of their workload and based on that they decide how much new sources can handle. If it happens that for some reason microservice cannot handle as many sources as it declared it is obligated to push this source to the 'available sources' queue so another microservice (if available) can handle it.
+- The idea is to create self-organizing micro-services with very loose coupling. By self-organizing I mean micro-services that are aware of their workload and based on that they decide how much new sources can handle. If it happens that the microservice cannot hold as many sources as it declared it is obligated to push this source to the 'available sources' queue so another microservice (if available) can handle it.
 - The source can also be marked as ``obsolete`` and should be dropped immediately and no longer be processed by the service.
 - The primary aim is performance, and the ability to deploy this solution into any system.
   
@@ -47,6 +47,32 @@ mkdir build && cd build
 cmake ..
 make
 ```
+
+# Run
+First of all: **set environment variables**! You can do this by running a prepared shell script. Edit it accordingly to your needs.
+```
+cd ~/Object-Detection-MicroService-CPP
+. env.sh
+```
+Then launch:
+```
+cd build
+./micro_od 'yolov8n.onnx' 640 640
+```
+1st param is Yolo's model name. Parameters 2 and 3 are model input shapes (height, width)
+
+# Expected Input & Output (Queues)
+Microservice expects messages in JSON format in the ``AVAILABLE_SOURCES`` queue. The minimum required fields are:
+```
+{
+  "id": 2,   <—— the unique numeric source's identifier
+  "exchange": "source-feed-2" <—— exchange which belongs to the source
+}
+```
+Source exchanges are expected to be the type of FanOut. Microservice will declare an exchange with the given name in the case where it was not declared yet.
+It will allow you to bind other queues and integrate other services e.g. you may share 1 camera device among multiple different services (object detection, face recognition, CCTV, etc.)
+
+
   
 # To Do:
 - Add logger
@@ -57,5 +83,5 @@ make
 - ~~Support at least Yolo V5 & Yolo V8~~
 
 # Contact?
-Find me on: <br />
+Please find me on: <br />
 Discord: ``ruhrohraggyretard``
