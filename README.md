@@ -14,6 +14,9 @@ Current performance ~``80FPS`` single service instance. (GTX 1080Ti)
 - Thread-safe operations
 - Let the service measure performance and automatically decide to register new sources or unregister if the source is causing too much load which results in increasing delay. In unregistering, the "source" goes back to the "AVAILABLE_SOURCES" queue so another instance of MicroService can handle it.
 
+![obraz](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP/assets/19922252/fe0d9684-03ff-4659-911f-c88d0b40fd12)
+
+
 # The Goal
 - This is only one element of a larger System
 - Hit at least 100+FPS or ~200+FPS with lighter model on one machine
