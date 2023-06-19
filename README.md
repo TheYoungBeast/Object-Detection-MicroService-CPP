@@ -109,22 +109,6 @@ Example output: (Single message)
             "width":224,
             "height":515
         }
-    },
-    {
-        "id":66,
-        "label":"keyboard",
-        "confidence":62.86008834838867,
-        "color":[
-            250,
-            95,
-            102
-        ],
-        "box":{
-            "x":137,
-            "y":446,
-            "width":118,
-            "height":97
-        }
     }
 ]
 ```
