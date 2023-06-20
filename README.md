@@ -1,5 +1,5 @@
 # Object-Detection-MicroService-CPP
-Object Detection MicroService C++.
+Event-driven microservice architecture. The microservice is meant to be scaled horizontally. Object Detection MicroService C++.
 Current performance ~``80FPS`` single service instance. (GTX 1080Ti) 
 
 # The Idea
