@@ -107,6 +107,7 @@ Example output: (Single message)
 Microservice will create an output exchange for each source. (But now when I think of that I'll probably change it to 1 exchange and use routing keys)
   
 # To Do:
+- Add ``health checks`` or ``Service registry`` pattern for microservices
 - Add logger
 - Attach timestamps to results 
 - Elasticsearch?
