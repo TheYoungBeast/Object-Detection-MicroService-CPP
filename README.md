@@ -125,4 +125,3 @@ Microservice will create an output exchange for each source. (But now when I thi
 
 # Contact?
 Please find me on: <br />
-Discord: ``ruhrohraggyretard``
