@@ -82,11 +82,7 @@ Example output: (Single message)
         "id":62,
         "label":"tv",
         "confidence":80.86636352539062,
-        "color":[
-            214,
-            137,
-            197
-        ],
+        "color":[ 214, 137, 197 ],
         "box":{
             "x":0,
             "y":295,
@@ -98,11 +94,7 @@ Example output: (Single message)
         "id":0,
         "label":"person",
         "confidence":70.75984191894531,
-        "color":[
-            157,
-            169,
-            165
-        ],
+        "color":[ 157, 169, 165 ],
         "box":{
             "x":255,
             "y":121,
