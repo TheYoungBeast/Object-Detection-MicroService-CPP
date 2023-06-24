@@ -1,4 +1,3 @@
-#include <iostream>
 #include <string_view>
 #include <vector>
 #include <future>
@@ -24,6 +23,9 @@
 #include <amqpcpp.h>
 #include <amqpcpp/libboostasio.h>
 
+// spdlog
+#include "spdlog/spdlog.h"
+
 // MISC
 #include "inc/detection_service.hpp"
 #include "inc/rabbitmq_client.hpp"
@@ -42,10 +44,17 @@ using namespace cuda;
 
 int main(int argc, const char** argv)
 {
-    std::cout << "Usage: ./micro_od 'model' height width" << std::endl;
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S] [%^%l%$] [thread %t] %v"); // %z for time zone
+    spdlog::flush_on(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::debug);
+
+    spdlog::info("Usage: ./micro_od 'model' height width");
 
     if(argc < 4)
         throw std::invalid_argument("Invalid number of arguments");
+
+    spdlog::info("Using spdlog version {}.{}.{}!", SPDLOG_VER_MAJOR, SPDLOG_VER_MINOR, SPDLOG_VER_PATCH);
+    spdlog::info("Using OpenCV version {}", CV_VERSION);
     
     const std::string assetsPath = "/home/dominik/Dev/OpenCVTest/assets/";
     const std::string modelsPath = assetsPath + "models/";
@@ -83,7 +92,7 @@ int main(int argc, const char** argv)
 
     background_services.emplace_back(service.run_background_service());
 
-    std::cout << "Starting GPU..." << std::endl;
+    spdlog::info("Warming up GPU...");
     service.register_source(0);
     auto warmup_frame = std::shared_ptr<cv::Mat>(new cv::Mat(cv::Mat::zeros(model_shape, CV_8UC3)));
     service.try_add_to_queue(0, warmup_frame);
@@ -123,8 +132,13 @@ int main(int argc, const char** argv)
     
     #pragma endregion PUBLISHER
 
-    rabbitmq->thread_join();
-    rabbitmq_publisher->thread_join();
+    std::vector<std::thread> rabbitmq_clients;
+
+    rabbitmq_clients.emplace_back( rabbitmq->client_run() );
+    rabbitmq_clients.emplace_back( rabbitmq_publisher->client_run() );
+
+    for(auto& client: rabbitmq_clients)
+        client.join();
 
     #pragma endregion RABBITMQ
 
