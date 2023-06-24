@@ -27,6 +27,7 @@ Current performance ~``80FPS`` single service instance. (GTX 1080Ti)
 # Dependencies
 - [OpenCV 4.7.0](https://github.com/opencv/opencv/tree/4.7.0) with CUDA & cuDNN support (GPU computing)
 - [AMQP-CPP](https://github.com/CopernicaMarketingSoftware/AMQP-CPP)
+- [spdlog](https://github.com/gabime/spdlog)
 - [Boost 1.82.0](https://www.boost.org/users/history/version_1_82_0.html) ([Getting Started](https://www.boost.org/doc/libs/1_82_0/more/getting_started/unix-variants.html))
 ```
 wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz
