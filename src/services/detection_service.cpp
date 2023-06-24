@@ -95,7 +95,8 @@ void basic_detection_service<T>::run()
     {
         if(queues.empty())
         {
-            std::this_thread::sleep_for(sleep_on_empty);
+            //std::this_thread::sleep_for(sleep_on_empty);
+            std::this_thread::yield();
             continue;
         }
 
@@ -123,13 +124,11 @@ void basic_detection_service<T>::run()
             auto processing = processing_service::get_service_instance();
             processing->push_results(current_queue_id, frame_ptr, results);
         }
-        catch(const cv::Exception& e)
-        {
-            std::cerr << e.what() << '\n';
+        catch(const cv::Exception& e) {
+            spdlog::error(e.what());
         }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
+        catch(const std::exception& e) {
+           spdlog::error(e.what());
         }
 
         performance_meter.stop();
@@ -139,12 +138,12 @@ void basic_detection_service<T>::run()
 
         if(total_frames_processed % 60 == 0)
         {
-            std::cout 
-            << "Q:" << current_queue_id 
-            << "\tP:" << queues[current_queue_id].size() 
-            << "\tavgT:" << performance_meter.getAvgTimeMilli() << "ms"
-            << "\tavgFPS:" << performance_meter.getFPS()
-            << std::endl;
+            spdlog::debug(
+                "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps", 
+                current_queue_id, 
+                queues[current_queue_id].size(), 
+                performance_meter.getAvgTimeMilli(), 
+                performance_meter.getFPS());
         }
 
         std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
@@ -158,12 +157,12 @@ template <typename T>
 bool basic_detection_service<T>::visit_new_src(unsigned src_id) {
    
     auto metrics = this->get_performance();
-    std::cout << metrics.avgProcessingTime << "ms" << "\t" << metrics.avgFPS << " FPS" << std::endl;
+    spdlog::info("[Service Metrics]: {}ms \t{} fps", metrics.avgProcessingTime, metrics.avgFPS);
 
-    std::cout << "New source available: " << src_id << std::endl;
+    spdlog::info("Registered new source (id:{})", src_id);
 
     if(not this->register_source(src_id))
-        std::cout << "Source already registered" << std::endl;
+        spdlog::warn("Source is already registered. Ignoring...");
 
     return true; // acknowledge anyway
 }

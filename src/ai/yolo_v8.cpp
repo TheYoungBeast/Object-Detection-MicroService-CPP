@@ -1,4 +1,6 @@
 #include <random>
+#include <spdlog/spdlog.h>
+
 #include "yolo_v8.hpp"
 
 
@@ -40,7 +42,7 @@ void yolo_v8::load_model()
 {
     this->network = cv::dnn::readNetFromONNX(this->dir_path+this->model_name);
     
-    std::cout << "\nRunning on CUDA" << std::endl;
+    spdlog::info("Running on CUDA");
 
     this->network.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     this->network.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);

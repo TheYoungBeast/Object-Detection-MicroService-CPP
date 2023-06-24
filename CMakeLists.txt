@@ -11,6 +11,7 @@ find_package( amqpcpp REQUIRED )
 find_package( 
     Boost 1.80.0 REQUIRED 
     COMPONENTS  json)
+find_package(spdlog REQUIRED)
 
 include_directories( 
     ${OpenCV_INCLUDE_DIRS} 
@@ -37,7 +38,8 @@ target_link_libraries(
     pthread 
     dl 
     ssl
-    ${OpenCV_LIBS} )
+    ${OpenCV_LIBS}
+    spdlog::spdlog_header_only )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
