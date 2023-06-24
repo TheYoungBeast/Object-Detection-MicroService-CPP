@@ -17,6 +17,10 @@
 #include <amqpcpp/envelope.h>
 #include <amqpcpp/libboostasio.h>
 
+// spdlog
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 
 /**
  * @warning Do not share among threads. Connection and channel are not thread-safe because of the implementation of AMQP-CPP
@@ -28,7 +32,7 @@ class message_bus_client
     using client_ref = message_bus_client&;
     
     protected:
-        std::thread thread;
+        unsigned runs = 0;
         boost::asio::io_service m_service;
         AMQP::LibBoostAsioHandler m_handler;
         AMQP::TcpConnection m_connection;
@@ -40,15 +44,14 @@ class message_bus_client
         /** 
          * Non-blocking message bus client using AMQP for RabbitMQ Server.
          * Multithreaded boost handler (boost::asio::io_service)
-         * @note to join client's thread call thread_join() method
          * @note avoid passing any non-owning objects
         */
         message_bus_client(const std::string_view&, uint = 2);
 
-        void thread_join();
+        std::thread client_run();
         
         std::optional<const std::string> get_binded_queue(const std::string_view& exchange_name);
-        client_ref declare_exchange(const std::string_view& exchange_name, const AMQP::ExchangeType exchange_type = AMQP::ExchangeType::direct);
+        client_ref declare_exchange(const std::string& exchange_name, const AMQP::ExchangeType exchange_type = AMQP::ExchangeType::direct);
         
         client_ref add_listener(const std::string exchange, const std::string queue, AMQP::MessageCallback callback, int flags = 0);
         client_ref add_listener(const std::string exchange_name, AMQP::MessageCallback callback, int flags = 0);

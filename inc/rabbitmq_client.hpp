@@ -38,6 +38,7 @@ class rabbitmq_client : public message_bus_client
         rabbitmq_client& bind_obsolete_sources(const std::string& exchange, detection_service_visitor<cv::Mat>* visitor);
 
         bool validate_json(boost::property_tree::ptree ptree, source& src);
+        auto source_from_json(std::string s) -> std::optional<source>;
 
     private:
         AMQP::MessageCallback available_src_msg_callback(detection_service_visitor<cv::Mat>* visitor);

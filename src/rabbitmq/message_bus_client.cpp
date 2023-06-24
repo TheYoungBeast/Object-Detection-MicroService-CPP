@@ -20,6 +20,8 @@ std::thread message_bus_client::client_run()
     if(runs > 0)
         throw std::runtime_error("Client_run() was called twice for the same client instance");
 
+    runs++;
+
     return std::thread([&](){
         m_service.run();
     });
