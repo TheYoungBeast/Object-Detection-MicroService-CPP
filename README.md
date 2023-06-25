@@ -5,7 +5,7 @@ Current performance ~``80FPS`` single service instance. (GTX 1080Ti)
 # Installation
 Deploy options are available below. <br>
 Please bear in mind that the project is currently in progress and may not perform as you would expect.
-If you plan to develop this piece of software move to the [build & run](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP#build&run) section.
+If you plan to develop this piece of software move to the [build & run](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP#build--run) section.
 
 ## Docker
 Build the image from the GitHub repository:
