@@ -1,6 +1,31 @@
 # Object-Detection-MicroService-CPP
 Event-driven microservice architecture. The microservice is meant to be scaled horizontally. Object Detection MicroService C++.
-Current performance ~``80FPS`` single service instance. (GTX 1080Ti) 
+Current performance ~``80FPS`` single service instance. (GTX 1080Ti)
+
+# Installation
+Deploy options are available below. <br>
+Please bear in mind that the project is currently in progress and may not perform as you would expect.
+If you plan to develop this piece of software move to the [build & run](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP#build&run) section.
+
+## Docker
+Build the image from the GitHub repository:
+```
+ docker build -t microservice/object-detection https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP.git
+```
+
+Then run the image:
+```
+docker run --gpus all -it microservice/object-detection:latest
+```
+
+## Docker Compose
+I'll add it soon
+
+## Requirements
+Bear in mind that you need Nvidia GPU to use this piece of software. It is because it uses CUDA/CuDNN hence the requirements.
+
+## Note
+If there's an error saying that the CUDA backend (or anything with GPU) is not available - try to rebuild the docker image specifying ``CUDA_ARCH_BIN`` arg. Go to [CUDA GPUs - Compute Capability](https://developer.nvidia.com/cuda-gpus) site and find your GPU model and compute capability number. (In my case it's 6.1 for GTX 1080 Ti) Then modify the dockerfile either by hand or by build-args and set CUDA_ARCH_BIN="Your compute capability" e.g  CUDA_ARCH_BIN="6.1"  and rebuild it.
 
 # The Idea
 - The idea is to create self-organizing micro-services with very loose coupling. By self-organizing I mean micro-services that are aware of their workload and based on that they decide how much new sources can handle. If it happens that the microservice cannot hold as many sources as it declared it is obligated to push this source to the 'available sources' queue so another microservice (if available) can handle it.
@@ -28,21 +53,13 @@ Current performance ~``80FPS`` single service instance. (GTX 1080Ti)
 - [OpenCV 4.7.0](https://github.com/opencv/opencv/tree/4.7.0) with CUDA & cuDNN support (GPU computing)
 - [AMQP-CPP](https://github.com/CopernicaMarketingSoftware/AMQP-CPP)
 - [spdlog](https://github.com/gabime/spdlog)
-- [Boost 1.82.0](https://www.boost.org/users/history/version_1_82_0.html) ([Getting Started](https://www.boost.org/doc/libs/1_82_0/more/getting_started/unix-variants.html))
-```
-wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz
-tar -xf boost_1_82_0.tar.gz
-rm -dr boost_1_82_0.tar.gz
-cd boost_1_82_0
-sudo ./bootstrap.sh
-sudo ./b2 install
-```
+- [Boost 1.82.0](https://www.boost.org/users/history/version_1_82_0.html) 
 
 # Platform
 The currently supported platforms are ``POSIX based`` only.
 It is due to limitations in AMQP-CPP TcpHandler. (It is possible to support Windows by implementing TcpHandler for Windows)
 
-# Build
+# Build & Run
 ```
 cd ~
 git clone https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP.git
@@ -52,7 +69,11 @@ cmake ..
 make
 ```
 
-# Run
+## Having a hard time building the project?
+If you have any troubles, please refer to the [dockerfile](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP/blob/main/dockerfile). The whole project and all the dependencies are built step by step. If that still does not help make sure you have NVIDIA GPU, Nvidia Toolkit, and GPU Drivers installed.
+Consider installing it using docker if you don't plan to modify the project.
+
+## Run (local)
 First of all: **set environment variables**! You can do this by running a prepared shell script. Edit it accordingly to your needs.
 ```
 cd ~/Object-Detection-MicroService-CPP
@@ -109,10 +130,10 @@ Microservice will create an output exchange for each source. (But now when I thi
   
 # To Do:
 - Add ``health checks`` or ``Service registry`` pattern for microservices
-- Add logger
+- ~~Add logger~~
 - Attach timestamps to results 
 - Elasticsearch?
-- Add docker container
+- ~~Add docker container~~
 - ~~Add JSON/Protobuf Support~~
 - Refactor code
 - ~~Support at least Yolo V5 & Yolo V8~~
