@@ -1,0 +1,25 @@
+services:
+  object-detection:
+    build:
+      context: .
+      args:
+        - OPENCV_VERSION=4.7.0
+    image: ${DOCKER_REGISTRY-}microservice/object-detection
+    environment:
+      - RabbitMQ_Address="amqp://localhost/"
+      - EXCHANGE_AVAILABLE_SOURCES="Available-Sources-Exchange"
+      - EXCHANGE_UNREGISTER_SOURCES="Unregister-Sources-Exchange"
+      - AVAILABLE_SOURCES_QUEUE="Available-Sources-Queue" 
+      - UNREGISTER_SOURCES_QUEUE="Unregister-Sources-Queue"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: RabbitMQ-Server
+    ports: 
+      - 8080:15672
