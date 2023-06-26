@@ -8,11 +8,11 @@
 namespace DEFAULT
 {
     const std::string AMQP_HOST = "amqp://localhost/";
-    const std::string AVAILABLE_SOURCES_EX = "EXCHANGE_AVAILABLE_SOURCES";
-    const std::string OBSOLETE_SOURCES_EX = "EXCHANGE_UNREGISTER_SOURCES";
+    const std::string AVAILABLE_SOURCES_EX = "Available-Sources-Exchange";
+    const std::string OBSOLETE_SOURCES_EX = "Unregister-Sources-Exchange";
 
-    const std::string AVAILABLE_SOURCES_QUE = "AVAILABLE_SOURCES_QUEUE";
-    const std::string OBSOLETE_SOURCES_QUE = "UNREGISTER_SOURCES_QUEUE";
+    const std::string AVAILABLE_SOURCES_QUE = "Available-Sources-Queue";
+    const std::string OBSOLETE_SOURCES_QUE = "Unregister-Sources-Queue";
 }
 
 #endif
