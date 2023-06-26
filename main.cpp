@@ -101,6 +101,7 @@ int main(int argc, const char** argv)
     // let background service warm up the GPU cache and connection
     // so it won't clog up queues with pending frames from rabbitmq client
     std::this_thread::sleep_for(gpu_warm_up_time);
+    
     service.unregister_source(0);
 
     #pragma endregion YOLO

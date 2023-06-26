@@ -1,3 +1,5 @@
+#!/bin/bash
+
 declare -A env_vars=(
     ["RabbitMQ_Address"]="amqp://localhost/"
     ["EXCHANGE_AVAILABLE_SOURCES"]="Available-Sources-Exchange"
