@@ -2,6 +2,20 @@
 Event-driven microservice architecture. The microservice is meant to be scaled horizontally. Object Detection MicroService C++.
 Current performance ~``80FPS`` single service instance. (GTX 1080Ti)
 
+# Overview
+I'm currently working on an easy-to-use and easy-to-deploy solution for object detection that can be used in a variety of systems.
+I focus on performance and usability.
+
+# Table of Contents
+1. [Installation](#installation)
+2. [Requirements](#requirements)
+3. [Architecture](#architecture-assumption)
+4. [Dependecies](#dependencies)
+5. [Examples](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP/tree/main/examples)
+6. [Build & Run](#build--run)
+7. [Expected Input & Output](#expected-input--output-queues)
+8. [To Do](#to-do)
+
 # Installation
 Deploy options are available below. <br>
 Please bear in mind that the project is currently in progress and may not perform as you would expect.
