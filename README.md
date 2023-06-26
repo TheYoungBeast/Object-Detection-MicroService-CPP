@@ -82,9 +82,8 @@ cd ~/Object-Detection-MicroService-CPP
 Then launch:
 ```
 cd build
-./micro_od 'yolov8n.onnx' 640 640
+./micro_od --path "path to the folder with yolo models"
 ```
-1st param is Yolo's model name. Parameters 2 and 3 are model input shapes (height, width)
 
 # Expected Input & Output (Queues)
 Microservice expects messages in JSON format in the ``AVAILABLE_SOURCES`` queue. The minimum required fields are:
