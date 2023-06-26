@@ -78,12 +78,9 @@ int main()
             }
             
             int size = frame.total() * frame.elemSize();
-            char* data = new char[size];
-            memcpy(data, frame.data, size*sizeof(char));
-
             try
             {
-                AMQP::Envelope envelope(data, size);
+                AMQP::Envelope envelope(reinterpret_cast<const char*>(frame.data), size);
 
                 AMQP::Table table;
                 table.set("srcid", src_id);
@@ -101,10 +98,9 @@ int main()
             }
 
             frame.release();
-            delete data;
         }
 
-        std::cout << total << " frames" << std::endl;
+        std::cout << total << " frames published" << std::endl;
         cap.release();
         t.join();
         return 0;
