@@ -18,6 +18,10 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/deadline_timer.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/algorithm/string.hpp>
 
 // AMQP RabbitMQ
 #include <amqpcpp.h>
@@ -36,11 +40,13 @@
 #include "inc/background_service.hpp"
 #include "inc/processing_service.hpp"
 #include "inc/data_publisher.hpp"
+#include "inc/defaults.hpp"
 
 using namespace std;
 using namespace cv;
 using namespace dnn;
 using namespace cuda;
+
 
 int main(int argc, const char** argv)
 {
@@ -48,18 +54,86 @@ int main(int argc, const char** argv)
     spdlog::flush_on(spdlog::level::debug);
     spdlog::set_level(spdlog::level::debug);
 
-    spdlog::info("Usage: ./micro_od 'model' height width");
+    boost::program_options::options_description desc("Options");
 
-    if(argc < 4)
-        throw std::invalid_argument("Invalid number of arguments");
+    desc.add_options()
+        ("type", boost::program_options::value<std::string>()->default_value("v8"), "AI model type e.g. v8, v5. Default: v8")
+        ("shape", boost::program_options::value<std::string>()->default_value("640x640"), "model shape (Width x Height) e.g. 640x640. Default: 640x640")
+        ("path", boost::program_options::value<std::string>(), "path to resources (models)")
+        ("model", boost::program_options::value<std::string>()->default_value("yolov8n.onnx"), "model name e.g. yolov8n.onnx. Default: yolov8n.onnx");
+
+    desc.print(std::cout);
+
+    boost::program_options::variables_map vm;
+
+    try {
+        boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+    } catch (const boost::program_options::unknown_option& u) {
+        spdlog::warn(u.what());
+    }
+    
+    boost::program_options::notify(vm);
+
+    std::string type;
+    if(!vm.count("type")) {
+        const std::string env = "model_type";
+        spdlog::critical("'type' parameter is not specified");
+        spdlog::info("Looking for {} env variable...", env);
+
+        get_env_or_throw(env); 
+    } else type = vm["type"].as<std::string>();
+
+    std::string shape;
+    if(!vm.count("shape")) {
+        const std::string env = "model_shape";
+        spdlog::critical("'shape' parameter is not specified");
+        spdlog::info("Looking for {} env variable...", env);
+
+        shape = get_env_or_throw(env); 
+    } else shape = vm["shape"].as<std::string>();
+    
+    
+    auto pos = shape.find("x");
+
+    if(pos == std::string::npos) {
+        spdlog::critical("Invalid model shape {}'", shape);
+        return -1;
+    }
+
+    int width = std::atoi(shape.substr(0, pos).c_str());
+    int height = std::atoi(shape.substr(pos+1, shape.length()).c_str());
+
+    if(width <= 0 || height <= 0) {
+        spdlog::critical("Invalid model shape {}x{}", width, height);
+        return -1;
+    }
+
+    cv::Size size = cv::Size(width, height);
+
+    std::string path;
+    if(!vm.count("path")) {
+        const std::string env = "model_path";
+        spdlog::critical("'path' parameter is not specified");
+        spdlog::info("Looking for {} env variable...", env);
+
+        get_env_or_throw(env); 
+    } else path = vm["path"].as<std::string>();
+
+    std::string model;
+    if(!vm.count("model")) {
+        const std::string env = "model_name";
+        spdlog::critical("'model' parameter is not specified");
+        spdlog::info("Looking for {} env variable...", env);
+
+        get_env_or_throw(env); 
+    } else model = vm["model"].as<std::string>();
 
     spdlog::info("Using spdlog version {}.{}.{}!", SPDLOG_VER_MAJOR, SPDLOG_VER_MINOR, SPDLOG_VER_PATCH);
     spdlog::info("Using OpenCV version {}", CV_VERSION);
     
-    const std::string assetsPath = "/home/dominik/Dev/OpenCVTest/assets/";
-    const std::string modelsPath = assetsPath + "models/";
-    const auto& model_name = std::string(argv[1]);
-    const cv::Size model_shape = cv::Size2f(std::atoi(argv[2]), std::atoi(argv[3]));
+    const std::string modelsPath = path;
+    const auto& model_name = model;
+    const cv::Size model_shape = size;
 
     #pragma region ENV
 
@@ -70,12 +144,20 @@ int main(int argc, const char** argv)
     const std::string_view available_sources_que_env = "AVAILABLE_SOURCES_QUEUE";
     const std::string_view unregister_sources_que_env = "UNREGISTER_SOURCES_QUEUE";
 
-    auto const& amqp_host = get_env_or_throw(amqp_host_env);
-    auto const& available_sources_exchange = get_env_or_throw(available_sources_env);
-    auto const& unregister_sources_exchange = get_env_or_throw(unregister_sources_env);
+    const auto& amqp = get_environment_variable(amqp_host_env);
+    auto const& amqp_host = amqp.has_value() ? amqp.value() : DEFAULT::AMQP_HOST;
 
-    auto const& available_sources_que = get_env_or_throw(available_sources_que_env);
-    auto const& unregister_sources_que = get_env_or_throw(unregister_sources_que_env);
+    const auto& as_exchange = get_environment_variable(available_sources_env);
+    auto const& available_sources_exchange = as_exchange.has_value() ? as_exchange.value() : DEFAULT::AVAILABLE_SOURCES_EX;
+
+    const auto& os_exchange = get_environment_variable(unregister_sources_env);
+    auto const& unregister_sources_exchange = os_exchange.has_value() ? os_exchange.value() : DEFAULT::OBSOLETE_SOURCES_EX;
+
+    const auto& as_que = get_environment_variable(available_sources_que_env);
+    auto const& available_sources_que = as_que.has_value() ? as_que.value() : DEFAULT::AVAILABLE_SOURCES_QUE;
+
+    const auto& os_que =  get_environment_variable(unregister_sources_que_env);
+    auto const& unregister_sources_que = os_que.has_value() ? os_que.value() : DEFAULT::OBSOLETE_SOURCES_QUE;
 
     #pragma endregion
 
@@ -85,7 +167,16 @@ int main(int argc, const char** argv)
 
     const std::chrono::seconds gpu_warm_up_time(5);
 
-    std::unique_ptr<detection_model> model_ptr(new yolo_v8(model_shape, modelsPath, model_name));
+    std::unique_ptr<detection_model> model_ptr;
+    
+    if(boost::iequals(type, "v5")) {
+        model_ptr = std::make_unique<yolo_v5>(model_shape, modelsPath, model_name);
+        spdlog::info("Creating model v5");
+    }
+    else {
+        model_ptr = std::make_unique<yolo_v8>(model_shape, modelsPath, model_name);
+        spdlog::info("Creating model v8");
+    }
 
     auto& service = detection_service::get_service_instance();
     service.use_model(model_ptr);
