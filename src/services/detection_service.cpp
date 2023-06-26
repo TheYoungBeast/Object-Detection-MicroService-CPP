@@ -104,14 +104,14 @@ void basic_detection_service<T>::run()
 
         current_queue_id = strategy->choose_next_queue(this->queues, current_queue_id);
 
-        if(current_queue_id > queues.size() || queues[current_queue_id].empty())
+        if(queues[current_queue_id].empty())
             continue;
 
         performance_meter.start();
 
         auto frame_ptr = queues[current_queue_id].front(); // fetch
 
-        if(!frame_ptr)
+        if(!frame_ptr) 
             continue;
         
         try
