@@ -152,14 +152,49 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
             channel.ack(deliveryTag);
             return;
         }
+
         auto source_id = int(field);
 
-        cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
+        const std::string type = "imgtype";
+        auto& type_header = message.headers().get(type);
+
+        int imgtype = -1;
+
+        if(!type_header.isInteger()) {
+            spdlog::warn("Invalid or missing {} header.", type);
+        }
+        else imgtype = int(type_header);
+
+        int width = 0;
+        int height = 0;
+
+        const std::string width_field = "imgwidth";
+        auto& width_header = message.headers().get(width_field);
+
+        const std::string height_field = "imgheight";
+        auto& height_header = message.headers().get(height_field);
+
+        width = int(width_header);
+        height = int(height_header);
+
         auto decodedMat = new cv::Mat();
-        cv::imdecode(rawData, cv::IMREAD_COLOR, decodedMat);
+
+        if(width <= 0 || height <= 0 || imgtype <= 0)
+        {
+            spdlog::warn("Missing headers. Attempting to decode frame");
+            cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
+            auto decodedMat = new cv::Mat();
+            cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decodedMat);
+            
+        }
+        else {
+            *decodedMat = cv::Mat(height, width, imgtype, reinterpret_cast<void*>( const_cast<char*>(message.body())));
+        }
+
 
         if(decodedMat->empty())
         {
+            spdlog::error("Could not decode image. Frame is empty");
             cv::Mat blank = cv::Mat::zeros(640, 640, CV_8UC3);
             blank.copyTo(*decodedMat);
             blank.release();
