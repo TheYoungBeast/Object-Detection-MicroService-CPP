@@ -154,17 +154,12 @@ void basic_detection_service<T>::run()
 
 
 template <typename T>
-bool basic_detection_service<T>::visit_new_src(unsigned src_id) {
-   
+bool basic_detection_service<T>::visit_new_src(unsigned src_id) 
+{   
     auto metrics = this->get_performance();
     spdlog::info("[Service Metrics]: {}ms \t{} fps", metrics.avgProcessingTime, metrics.avgFPS);
 
-    spdlog::info("Registered new source (id:{})", src_id);
-
-    if(not this->register_source(src_id))
-        spdlog::warn("Source is already registered. Ignoring...");
-
-    return true; // acknowledge anyway
+    return this->register_source(src_id);
 }
 
 template <typename T>

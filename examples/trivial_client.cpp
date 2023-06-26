@@ -34,6 +34,7 @@ int main()
     const std::string SRC_EXCHANGE = "source-99";
     const int src_id = 99;
     const std::string json = "{ \"id\": 99, \"exchange\": \"source-99\" }";
+    auto total_published = 0;
 
     auto publisher = std::thread([&]()
     {
@@ -65,7 +66,6 @@ int main()
 
         static bool once = false;
 
-        auto total = 0;
         while(cap.grab())
         {
             cv::Mat frame;
@@ -78,12 +78,9 @@ int main()
             }
             
             int size = frame.total() * frame.elemSize();
-            char* data = new char[size];
-            memcpy(data, frame.data, size*sizeof(char));
-
             try
             {
-                AMQP::Envelope envelope(data, size);
+                AMQP::Envelope envelope(reinterpret_cast<const char*>(frame.data), size);
 
                 AMQP::Table table;
                 table.set("srcid", src_id);
@@ -92,7 +89,7 @@ int main()
                 table.set("imgheight", frame.rows);
                 envelope.setHeaders(table);
 
-                total++;
+                total_published++;
                 channel.publish(SRC_EXCHANGE, "", envelope);
                 this_thread::sleep_for(std::chrono::milliseconds(30));
             }
@@ -101,11 +98,11 @@ int main()
             }
 
             frame.release();
-            delete data;
         }
 
-        std::cout << total << " frames" << std::endl;
+        std::cout << total_published << " frames published" << std::endl;
         cap.release();
+        service.stop();
         t.join();
         return 0;
     });
@@ -116,6 +113,7 @@ int main()
         AMQP::LibBoostAsioHandler handler(service);
         AMQP::TcpConnection connection (&handler, AMQP::Address(amqp));
         AMQP::TcpChannel channel (&connection);
+        static int counter = 0;
 
         channel.declareQueue(AMQP::exclusive).onSuccess([&](const std::string &name, uint32_t messagecount, uint32_t consumercount)
         {
@@ -124,10 +122,13 @@ int main()
             auto& consumer = channel.consume(name);
             consumer.onMessage([&](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
             {
-                static int counter = 0;
                 channel.ack(deliveryTag);
                 std::string str(message.body(), message.bodySize());
                 std::cout << ++counter << " frame results: \t" << str << std::endl;
+
+                if(counter == total_published) {
+                    service.stop();
+                }
             });
         });
         

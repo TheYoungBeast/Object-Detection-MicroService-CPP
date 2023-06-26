@@ -10,7 +10,7 @@ find_package( OpenCV REQUIRED )
 find_package( amqpcpp REQUIRED )
 find_package( 
     Boost 1.80.0 REQUIRED 
-    COMPONENTS  json)
+    COMPONENTS  json program_options REQUIRED)
 find_package(spdlog REQUIRED)
 
 include_directories( 
@@ -33,11 +33,10 @@ add_dependencies(micro_od amqpcpp)
 target_link_libraries( 
     micro_od
     amqpcpp 
-    boost_system
-    boost_json 
     pthread 
     dl 
     ssl
+    ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
     spdlog::spdlog_header_only )
 
