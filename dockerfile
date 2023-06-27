@@ -91,8 +91,8 @@ RUN mkdir app && cd /app/ && \
     mkdir build && cd build && \
     cmake .. && make && \
 	cp micro_od /app/ && \
-	mkdir ~/models/ && \
-	cp ../assets/models/ ~/models/
+	mkdir ~/models && \
+	cp ../assets/models/* ~/models/
 
 RUN chmod +x ~/env.sh
 
@@ -103,4 +103,4 @@ RUN pwd
 WORKDIR app
 
 # Launch built application
-CMD ["./micro_od", "--path", "home/root/models/"]
+CMD ["./micro_od", "--path", "root/models/"]
