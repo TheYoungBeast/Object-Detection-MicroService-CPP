@@ -33,13 +33,20 @@ docker run --gpus all -it microservice/object-detection:latest
 ```
 
 ## Docker Compose
-I'll add it soon
+Move to the project folder and then:
+```
+docker compose up
+```
 
 ## Requirements
 Bear in mind that you need Nvidia GPU to use this piece of software. It is because it uses CUDA/CuDNN hence the requirements.
 
 ## Note
 If there's an error saying that the CUDA backend (or anything with GPU) is not available - try to rebuild the docker image specifying ``CUDA_ARCH_BIN`` arg. Go to [CUDA GPUs - Compute Capability](https://developer.nvidia.com/cuda-gpus) site and find your GPU model and compute capability number. (In my case it's 6.1 for GTX 1080 Ti) Then modify the dockerfile either by hand or by build-args and set CUDA_ARCH_BIN="Your compute capability" e.g  CUDA_ARCH_BIN="6.1"  and rebuild it.
+
+Example of described error:
+![obraz](https://github.com/TheYoungBeast/Object-Detection-MicroService-CPP/assets/19922252/b09d36f8-c506-4e39-897b-73c75e7c809b)
+
 
 # The Idea
 - The idea is to create self-organizing micro-services with very loose coupling. By self-organizing I mean micro-services that are aware of their workload and based on that they decide how much new sources can handle. If it happens that the microservice cannot hold as many sources as it declared it is obligated to push this source to the 'available sources' queue so another microservice (if available) can handle it.
