@@ -90,13 +90,17 @@ RUN mkdir app && cd /app/ && \
     cp env.sh ~/ && \
     mkdir build && cd build && \
     cmake .. && make && \
-	cp micro_od /app/
+	cp micro_od /app/ && \
+	mkdir ~/models/ && \
+	cp ../assets/models/ ~/models/
 
 RUN chmod +x ~/env.sh
 
 RUN bash ~/env.sh
 
+RUN pwd
+
 WORKDIR app
 
 # Launch built application
-CMD ["./micro_od", "yolov8n.onxx", "640", "640"]
+CMD ["./micro_od", "--path", "home/root/models/"]
