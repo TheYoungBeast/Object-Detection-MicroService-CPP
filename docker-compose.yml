@@ -2,27 +2,30 @@ version: '3.4'
 name: object-detection-cluster
 
 services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: RabbitMQ-Server
+    ports: 
+      - 8080:15672
+      
   object-detection:
     build:
       context: .
       args:
         - OPENCV_VERSION=4.7.0
+        - CUDA_ARCH_BIN=6.1  # <-- Make sure to change it according to your GPU device. Refer to the installation section
     image: ${DOCKER_REGISTRY-}microservice/object-detection
     environment:
-      - RabbitMQ_Address="amqp://localhost/"
-      - EXCHANGE_AVAILABLE_SOURCES="Available-Sources-Exchange"
-      - EXCHANGE_UNREGISTER_SOURCES="Unregister-Sources-Exchange"
-      - AVAILABLE_SOURCES_QUEUE="Available-Sources-Queue" 
-      - UNREGISTER_SOURCES_QUEUE="Unregister-Sources-Queue"
+      - RabbitMQ_Address=amqp://localhost/
+      - EXCHANGE_AVAILABLE_SOURCES=Available-Sources-Exchange
+      - EXCHANGE_UNREGISTER_SOURCES=Unregister-Sources-Exchange
+      - AVAILABLE_SOURCES_QUEUE=Available-Sources-Queue 
+      - UNREGISTER_SOURCES_QUEUE=Unregister-Sources-Queue
+    depends_on:
+      - rabbitmq
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               capabilities: [gpu]
-    
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: RabbitMQ-Server
-    ports: 
-      - 8080:15672
