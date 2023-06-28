@@ -157,6 +157,8 @@ Microservice will create an output exchange for each source. (But now when I thi
 - ~~Add JSON/Protobuf Support~~
 - Refactor code
 - ~~Support at least Yolo V5 & Yolo V8~~
+- Add Tests
+- Add CI/CD other than CI Docker
 
 # Contact?
 Please find me on: <br />
