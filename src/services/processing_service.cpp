@@ -112,9 +112,16 @@ void basic_processing_service<T>::push_results(unsigned src_id, std::shared_ptr<
 }
 
 template<typename T>
-basic_processing_service<T>* basic_processing_service<T>::set_publishers(std::shared_ptr<data_publisher> publisher_data, std::shared_ptr<data_publisher> publisher_frame)
+basic_processing_service<T>* basic_processing_service<T>::set_data_publisher(std::shared_ptr<data_publisher> publisher)
 {
-    json_publisher = publisher_data;
+    this->json_publisher = publisher;
+    return this;
+}
+
+template<typename T>
+basic_processing_service<T>* basic_processing_service<T>::set_img_publisher(std::shared_ptr<img_publisher> publisher)
+{
+    this->frame_publisher = publisher;
     return this;
 }
 
@@ -135,7 +142,11 @@ void basic_processing_service<T>::run()
         if(json_publisher)
             json_publisher->publish(id, detections, 5);
 
-        this->apply_results(*frame, detections);
+        if(frame_publisher)
+        {
+            auto& result = this->apply_results(*frame, detections);
+            frame_publisher->publish_image(result, id);
+        }
 
         std::unique_lock lock(sync);
         results.pop();

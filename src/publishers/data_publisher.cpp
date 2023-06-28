@@ -1,21 +1,13 @@
 #include "../inc/publisher/data_publisher.hpp"
 
 data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client)
-    : rabbitmq(client), data_converter( std::unique_ptr<converter>(new json_converter()) )
+    : basic_publisher(client), data_converter( std::unique_ptr<converter>(new json_converter()) )
 {
-    
 }
 
 data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client, std::unique_ptr<converter>& custom_converter)
-    : rabbitmq(client), data_converter(std::move(custom_converter))
+    : basic_publisher(client), data_converter(std::move(custom_converter))
 {
-}
-
-void data_publisher::declare_exchange(unsigned src_id)
-{
-    auto exchange = this->prefix + boost::lexical_cast<std::string>(src_id);
-    rabbitmq->declare_exchange(exchange, AMQP::ExchangeType::fanout);
-    this->declared_exchanges.try_emplace(src_id, exchange);
 }
 
 std::string json_converter::convert(const std::vector<detection>& results)
@@ -36,15 +28,10 @@ std::string json_converter::convert(const std::vector<detection>& results)
     return boost::json::serialize(array);
 }
 
-bool data_publisher::is_declared(unsigned src_id)
-{
-    return this->declared_exchanges.find(src_id) != this->declared_exchanges.end();
-}
-
 bool data_publisher::publish(unsigned src_id, const std::vector<detection>& result)
 {
     if(!is_declared(src_id))
-        declare_exchange(src_id);
+        declare_exchange(src_id, this->prefix);
     
     return rabbitmq->publish(declared_exchanges[src_id], "", data_converter->convert(result) );
 }

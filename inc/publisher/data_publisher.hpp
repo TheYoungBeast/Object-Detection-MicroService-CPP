@@ -8,15 +8,14 @@
 #include <sstream>
 
 #include <boost/json.hpp>
-#include <boost/lexical_cast.hpp>
 
-#include "../rabbitmq/rabbitmq_client.hpp"
+#include "basic_publisher.hpp"
 
 /**
  * @note Join Rabbitmq client before injecting it to the class
  * @note Do not share rabbitmq client among threads 
 */
-class data_publisher
+class data_publisher : public basic_publisher
 {
     public:
         class converter
@@ -31,9 +30,7 @@ class data_publisher
 
     protected:
         std::unique_ptr<converter> data_converter;
-        std::shared_ptr<rabbitmq_client> rabbitmq;
         std::string prefix = "detection-results-";
-        std::map<unsigned, std::string> declared_exchanges;
 
     public:
         data_publisher(std::shared_ptr<rabbitmq_client> client);
@@ -42,18 +39,6 @@ class data_publisher
 
         bool publish(unsigned src_id, const std::vector<detection>& results);
         bool publish(unsigned src_id, const std::vector<detection>& results, unsigned limit);
-
-    private:
-        /**
-         * @brief Declares exchange in which the client is going to publish
-         * @param src_id source id - creates exchange for this id
-        */
-        void declare_exchange(unsigned src_id);
-        /**
-         * @brief Checks wheather this instance already declared exchange for given src_id
-         * @param src_id source id
-        */
-        bool is_declared(unsigned src_id);
 };
 
 /**

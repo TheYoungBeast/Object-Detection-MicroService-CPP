@@ -13,6 +13,7 @@
 #include "background_service.hpp"
 #include "../ai/detection_model.hpp"
 #include "../publisher/data_publisher.hpp"
+#include "../publisher/img_publisher.hpp"
 
 template <typename T>
 class basic_processing_service;
@@ -33,7 +34,9 @@ class basic_processing_service : public background_service
         std::vector<std::string> labels;
         std::queue< std::tuple<unsigned, std::shared_ptr<T>, std::vector<detection>> > results;
         std::mutex sync;
+
         std::shared_ptr<data_publisher> json_publisher;
+        std::shared_ptr<img_publisher> frame_publisher;
 
     protected:
         basic_processing_service() = default;
@@ -49,7 +52,8 @@ class basic_processing_service : public background_service
         self_ptr set_objects_threshold(const std::pair<unsigned, float>& pair);
         self_ptr set_applied_detections_limit(unsigned limit);
         self_ptr set_global_threshold(float th);
-        self_ptr set_publishers(std::shared_ptr<data_publisher> publisher_data, std::shared_ptr<data_publisher> publisher_frame);
+        self_ptr set_data_publisher(std::shared_ptr<data_publisher> publisher);
+        self_ptr set_img_publisher(std::shared_ptr<img_publisher> publisher);
         
         void push_results(unsigned src_id, std::shared_ptr<T> frame, const std::vector<detection>& detections);
 
