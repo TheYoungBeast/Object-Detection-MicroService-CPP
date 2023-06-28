@@ -1,4 +1,4 @@
-#include "yolo_v5.hpp"
+#include "../inc/ai/yolo_v5.hpp"
 
 yolo_v5::yolo_v5(cv::Size2f shape, const std::string& dir, const std::string& model)
     : yolo_v8(shape, dir, model)

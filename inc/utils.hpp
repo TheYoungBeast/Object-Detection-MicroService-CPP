@@ -6,7 +6,7 @@
 #include <optional>
 #include <string>
 
-#include "missing_environment_variable.hpp"
+#include "exception/missing_environment_variable.hpp"
 
 /**
  * Reads environment variable

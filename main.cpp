@@ -31,15 +31,16 @@
 #include "spdlog/spdlog.h"
 
 // MISC
-#include "inc/detection_service.hpp"
-#include "inc/rabbitmq_client.hpp"
-#include "inc/missing_environment_variable.hpp"
+#include "inc/service/detection_service.hpp"
+#include "inc/rabbitmq/rabbitmq_client.hpp"
+#include "inc/exception/missing_environment_variable.hpp"
 #include "inc/utils.hpp"
-#include "inc/yolo_v8.hpp"
-#include "inc/yolo_v5.hpp"
-#include "inc/background_service.hpp"
-#include "inc/processing_service.hpp"
-#include "inc/data_publisher.hpp"
+#include "inc/ai/yolo_v8.hpp"
+#include "inc/ai/yolo_v5.hpp"
+#include "inc/service/background_service.hpp"
+#include "inc/service/processing_service.hpp"
+#include "inc/publisher/data_publisher.hpp"
+#include "inc/publisher/img_publisher.hpp"
 #include "inc/defaults.hpp"
 
 using namespace std;
@@ -215,12 +216,16 @@ int main(int argc, const char** argv)
         .bind_available_sources(available_sources_exchange, visitor)
         .bind_obsolete_sources(unregister_sources_exchange, visitor);
 
-    auto rabbitmq_publisher = std::make_shared<rabbitmq_client>(amqp_host);
-
     #pragma region PUBLISHER
 
+    auto rabbitmq_publisher = std::make_shared<rabbitmq_client>(amqp_host);
+    auto rabbitmq_img_publisher = std::make_shared<rabbitmq_client>(amqp_host);
+
     auto publisher = std::make_shared<data_publisher>(rabbitmq_publisher);
-    processing_service::get_service_instance()->set_publishers(publisher, nullptr);
+    processing_service::get_service_instance()->set_data_publisher(publisher);
+
+    auto imgpublisher = std::make_shared<img_publisher>(rabbitmq_img_publisher);
+    processing_service::get_service_instance()->set_img_publisher(imgpublisher);
     
     #pragma endregion PUBLISHER
 
@@ -228,6 +233,7 @@ int main(int argc, const char** argv)
 
     rabbitmq_clients.emplace_back( rabbitmq->client_run() );
     rabbitmq_clients.emplace_back( rabbitmq_publisher->client_run() );
+    rabbitmq_clients.emplace_back( rabbitmq_img_publisher->client_run() );
 
     for(auto& client: rabbitmq_clients)
         client.join();

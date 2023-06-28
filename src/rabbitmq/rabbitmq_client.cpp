@@ -1,4 +1,4 @@
-#include "../../inc/rabbitmq_client.hpp"
+#include "../inc/rabbitmq/rabbitmq_client.hpp"
 #include <spdlog/spdlog.h>
 
 rabbitmq_client::rabbitmq_client(const std::string_view& connection_string) : message_bus_client(connection_string)
@@ -91,12 +91,12 @@ AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_serv
         auto src = source_from_json(body);
 
         if(!src.has_value()){
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
             return;
         }
         
         if(!visitor->visit_new_src(src->id)) {
-            channel.ack(deliveryTag); // acknowledge anyway
+           channel->ack(deliveryTag); // acknowledge anyway
             return;
         }
 
@@ -104,7 +104,7 @@ AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_serv
         this->declare_exchange(src->exchange, AMQP::ExchangeType::fanout);
         this->add_listener(src->exchange, callback, AMQP::exclusive | AMQP::autodelete);
 
-        channel.ack(deliveryTag);
+       channel->ack(deliveryTag);
         return;
     };
     return callback;
@@ -118,7 +118,7 @@ AMQP::MessageCallback rabbitmq_client::obsolete_src_msg_callback(detection_servi
         auto src = source_from_json(body);
 
         if(!src.has_value()) {
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
             return;
         }
 
@@ -128,12 +128,12 @@ AMQP::MessageCallback rabbitmq_client::obsolete_src_msg_callback(detection_servi
         auto que = this->get_binded_queue(src->exchange);
 
         if(que.has_value())
-            channel.unbindQueue(src->exchange, que.value(), ""); 
+           channel->unbindQueue(src->exchange, que.value(), ""); 
 
         detection_service::get_service_instance().unregister_source(src->id);
         spdlog::info("Unregistered source (id:{}) from the service", src->id);
         
-        channel.ack(deliveryTag);
+       channel->ack(deliveryTag);
         return;
     };
 
@@ -149,7 +149,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
 
         if(!field.isInteger()) {
             spdlog::warn("Invalid or missing {} header. Attach {} header with source-id value to your message", header, header);
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
             return;
         }
 
@@ -177,33 +177,50 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
         width = int(width_header);
         height = int(height_header);
 
-        auto decodedMat = new cv::Mat();
+        std::shared_ptr<cv::Mat> decoded_frame;
 
-        if(width <= 0 || height <= 0 || imgtype <= 0)
+        try
         {
-            spdlog::warn("Missing headers. Attempting to decode frame");
-            cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
-            auto decodedMat = new cv::Mat();
-            cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decodedMat);
-            
-        }
-        else {
-            *decodedMat = cv::Mat(height, width, imgtype, reinterpret_cast<void*>( const_cast<char*>(message.body())));
-        }
+            decoded_frame = std::make_shared<cv::Mat>();
 
+            if(width <= 0 || height <= 0 || imgtype <= 0)
+            {
+                spdlog::warn("Missing headers. Attempting to decode frame");
+                cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
+                decoded_frame = std::make_shared<cv::Mat>();
+                cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decoded_frame.get());
+                rawData.release();
+            }
+            else
+            {
+                decoded_frame = std::make_shared<cv::Mat>(
+                    height, 
+                    width, 
+                    imgtype, 
+                    reinterpret_cast<void*>( const_cast<char*>(message.body())));
+            }
 
-        if(decodedMat->empty())
-        {
-            spdlog::error("Could not decode image. Frame is empty");
-            cv::Mat blank = cv::Mat::zeros(640, 640, CV_8UC3);
-            blank.copyTo(*decodedMat);
-            blank.release();
+            if(decoded_frame->empty())
+            {
+                spdlog::error("Could not decode image. Frame is empty");
+                cv::Mat blank = cv::Mat::zeros(640, 640, CV_8UC3);
+                blank.copyTo(*decoded_frame);
+                blank.release();
+            }
+        }
+        catch(const std::bad_alloc& a) {
+            spdlog::critical(a.what());
+            return;
+        }
+        catch(const std::exception& e) {
+            spdlog::error(e.what());
+            return;
         }
 
         auto& service = detection_service::get_service_instance();
 
-        if(visitor->visit_new_frame(source_id, std::shared_ptr<cv::Mat>(decodedMat)))
-            channel.ack(deliveryTag);
+        if(visitor->visit_new_frame(source_id, decoded_frame))
+           channel->ack(deliveryTag);
         
         return;
     };

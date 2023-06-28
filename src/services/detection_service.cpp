@@ -1,5 +1,5 @@
-#include "detection_service.hpp"
-#include "processing_service.hpp"
+#include "../inc/service/detection_service.hpp"
+#include "../inc/service/processing_service.hpp"
 
 template <typename T>
 basic_detection_service<T>& basic_detection_service<T>::get_service_instance()
@@ -93,29 +93,28 @@ void basic_detection_service<T>::run()
     
     while (true)
     {
-        if(queues.empty())
-        {
-            //std::this_thread::sleep_for(sleep_on_empty);
-            std::this_thread::yield();
-            continue;
-        }
+        try{
+            if(queues.empty())
+            {
+                //std::this_thread::sleep_for(sleep_on_empty);
+                std::this_thread::yield();
+                continue;
+            }
 
-        std::lock_guard inf_lock(inference_mutex);
+            std::lock_guard inf_lock(inference_mutex);
 
-        current_queue_id = strategy->choose_next_queue(this->queues, current_queue_id);
+            current_queue_id = strategy->choose_next_queue(this->queues, current_queue_id);
 
-        if(queues[current_queue_id].empty())
-            continue;
+            if(queues[current_queue_id].empty())
+                continue;
 
-        performance_meter.start();
+            performance_meter.start();
 
-        auto frame_ptr = queues[current_queue_id].front(); // fetch
+            auto frame_ptr = queues[current_queue_id].front(); // fetch
 
-        if(!frame_ptr) 
-            continue;
-        
-        try
-        {
+            if(!frame_ptr) 
+                continue;
+            
             auto&& results = model->object_detection(*frame_ptr);
             model->apply_detections_on_image(*frame_ptr, results);
             //cv::imwrite("view.jpg", *frame_ptr);
@@ -123,6 +122,25 @@ void basic_detection_service<T>::run()
 
             auto processing = processing_service::get_service_instance();
             processing->push_results(current_queue_id, frame_ptr, results);
+        
+            performance_meter.stop();
+
+            if(total_frames_processed == 1)
+                performance_meter.reset();
+
+            if(total_frames_processed % 60 == 0)
+            {
+                spdlog::debug(
+                    "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps", 
+                    current_queue_id, 
+                    queues[current_queue_id].size(), 
+                    performance_meter.getAvgTimeMilli(), 
+                    performance_meter.getFPS());
+            }
+
+            std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
+            queues[current_queue_id].pop(); // remove front position
+            lock.unlock(); // unlock the queue
         }
         catch(const cv::Exception& e) {
             spdlog::error(e.what());
@@ -130,25 +148,9 @@ void basic_detection_service<T>::run()
         catch(const std::exception& e) {
            spdlog::error(e.what());
         }
-
-        performance_meter.stop();
-
-        if(total_frames_processed == 1)
-            performance_meter.reset();
-
-        if(total_frames_processed % 60 == 0)
-        {
-            spdlog::debug(
-                "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps", 
-                current_queue_id, 
-                queues[current_queue_id].size(), 
-                performance_meter.getAvgTimeMilli(), 
-                performance_meter.getFPS());
+        catch(...) {
+            spdlog::error("[Detection service]: Unknown Error");
         }
-
-        std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
-        queues[current_queue_id].pop(); // remove front position
-        lock.unlock(); // unlock the queue
     }   
 }
 
