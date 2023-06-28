@@ -6,6 +6,7 @@
 #include <optional>
 #include <thread>
 #include <unordered_set>
+#include <memory>
 
 // Boost
 #include <boost/asio/io_service.hpp>
@@ -31,12 +32,15 @@ class message_bus_client
     using client = message_bus_client;
     using client_ref = message_bus_client&;
     
-    protected:
+    private:
+        AMQP::Address address;
         unsigned runs = 0;
         boost::asio::io_service m_service;
         AMQP::LibBoostAsioHandler m_handler;
-        AMQP::TcpConnection m_connection;
-        AMQP::TcpChannel channel;
+
+    protected:
+        std::unique_ptr<AMQP::TcpConnection> m_connection;
+        std::unique_ptr<AMQP::TcpChannel> channel;
 
         std::unordered_map<std::string, std::string> m_binded_queues = std::unordered_map<std::string, std::string>();
 
@@ -60,6 +64,10 @@ class message_bus_client
         bool publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags = 0);
 
         virtual ~message_bus_client() = default;
+
+    private:
+        void connection_init();
+        void channel_init();
 };
 
 #endif // MESSAGE_BUS_CLIENT_H

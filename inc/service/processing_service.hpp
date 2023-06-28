@@ -11,8 +11,8 @@
 #include <opencv2/opencv.hpp>
 
 #include "background_service.hpp"
-#include "detection_model.hpp"
-#include "data_publisher.hpp"
+#include "../ai/detection_model.hpp"
+#include "../publisher/data_publisher.hpp"
 
 template <typename T>
 class basic_processing_service;

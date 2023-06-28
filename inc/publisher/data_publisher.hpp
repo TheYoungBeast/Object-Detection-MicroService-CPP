@@ -10,7 +10,7 @@
 #include <boost/json.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "rabbitmq_client.hpp"
+#include "../rabbitmq/rabbitmq_client.hpp"
 
 /**
  * @note Join Rabbitmq client before injecting it to the class

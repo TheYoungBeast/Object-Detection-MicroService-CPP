@@ -1,4 +1,4 @@
-#include "../../inc/data_publisher.hpp"
+#include "../inc/publisher/data_publisher.hpp"
 
 data_publisher::data_publisher(std::shared_ptr<rabbitmq_client> client)
     : rabbitmq(client), data_converter( std::unique_ptr<converter>(new json_converter()) )

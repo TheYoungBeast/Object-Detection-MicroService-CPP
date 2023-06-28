@@ -9,7 +9,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "message_bus_client.hpp"
-#include "detection_service.hpp"
+#include "../service/detection_service.hpp"
 
 struct source
 {

@@ -1,7 +1,7 @@
 #include <random>
 #include <spdlog/spdlog.h>
 
-#include "yolo_v8.hpp"
+#include "../inc/ai/yolo_v8.hpp"
 
 
 yolo_v8::yolo_v8(const cv::Size2f& size, const std::string& dir, const std::string& model)

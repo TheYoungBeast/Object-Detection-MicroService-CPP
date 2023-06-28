@@ -7,7 +7,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "detection_model.hpp"
+#include "../ai/detection_model.hpp"
 #include "background_service.hpp"
 
 template <typename T>

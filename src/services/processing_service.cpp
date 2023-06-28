@@ -1,4 +1,4 @@
-#include "processing_service.hpp"
+#include "../inc/service/processing_service.hpp"
 
 template<typename T>
 basic_processing_service<T>* basic_processing_service<T>::exclude_objects(std::vector<unsigned> excluded) {

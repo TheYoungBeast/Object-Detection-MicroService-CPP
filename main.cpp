@@ -31,15 +31,15 @@
 #include "spdlog/spdlog.h"
 
 // MISC
-#include "inc/detection_service.hpp"
-#include "inc/rabbitmq_client.hpp"
-#include "inc/missing_environment_variable.hpp"
+#include "inc/service/detection_service.hpp"
+#include "inc/rabbitmq/rabbitmq_client.hpp"
+#include "inc/exception/missing_environment_variable.hpp"
 #include "inc/utils.hpp"
-#include "inc/yolo_v8.hpp"
-#include "inc/yolo_v5.hpp"
-#include "inc/background_service.hpp"
-#include "inc/processing_service.hpp"
-#include "inc/data_publisher.hpp"
+#include "inc/ai/yolo_v8.hpp"
+#include "inc/ai/yolo_v5.hpp"
+#include "inc/service/background_service.hpp"
+#include "inc/service/processing_service.hpp"
+#include "inc/publisher/data_publisher.hpp"
 #include "inc/defaults.hpp"
 
 using namespace std;

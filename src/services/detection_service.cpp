@@ -1,5 +1,5 @@
-#include "detection_service.hpp"
-#include "processing_service.hpp"
+#include "../inc/service/detection_service.hpp"
+#include "../inc/service/processing_service.hpp"
 
 template <typename T>
 basic_detection_service<T>& basic_detection_service<T>::get_service_instance()

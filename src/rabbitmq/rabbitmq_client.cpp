@@ -1,4 +1,4 @@
-#include "../../inc/rabbitmq_client.hpp"
+#include "../inc/rabbitmq/rabbitmq_client.hpp"
 #include <spdlog/spdlog.h>
 
 rabbitmq_client::rabbitmq_client(const std::string_view& connection_string) : message_bus_client(connection_string)
@@ -91,12 +91,12 @@ AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_serv
         auto src = source_from_json(body);
 
         if(!src.has_value()){
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
             return;
         }
         
         if(!visitor->visit_new_src(src->id)) {
-            channel.ack(deliveryTag); // acknowledge anyway
+           channel->ack(deliveryTag); // acknowledge anyway
             return;
         }
 
@@ -104,7 +104,7 @@ AMQP::MessageCallback rabbitmq_client::available_src_msg_callback(detection_serv
         this->declare_exchange(src->exchange, AMQP::ExchangeType::fanout);
         this->add_listener(src->exchange, callback, AMQP::exclusive | AMQP::autodelete);
 
-        channel.ack(deliveryTag);
+       channel->ack(deliveryTag);
         return;
     };
     return callback;
@@ -118,7 +118,7 @@ AMQP::MessageCallback rabbitmq_client::obsolete_src_msg_callback(detection_servi
         auto src = source_from_json(body);
 
         if(!src.has_value()) {
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
             return;
         }
 
@@ -128,12 +128,12 @@ AMQP::MessageCallback rabbitmq_client::obsolete_src_msg_callback(detection_servi
         auto que = this->get_binded_queue(src->exchange);
 
         if(que.has_value())
-            channel.unbindQueue(src->exchange, que.value(), ""); 
+           channel->unbindQueue(src->exchange, que.value(), ""); 
 
         detection_service::get_service_instance().unregister_source(src->id);
         spdlog::info("Unregistered source (id:{}) from the service", src->id);
         
-        channel.ack(deliveryTag);
+       channel->ack(deliveryTag);
         return;
     };
 
@@ -149,7 +149,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
 
         if(!field.isInteger()) {
             spdlog::warn("Invalid or missing {} header. Attach {} header with source-id value to your message", header, header);
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
             return;
         }
 
@@ -203,7 +203,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
         auto& service = detection_service::get_service_instance();
 
         if(visitor->visit_new_frame(source_id, std::shared_ptr<cv::Mat>(decodedMat)))
-            channel.ack(deliveryTag);
+           channel->ack(deliveryTag);
         
         return;
     };
