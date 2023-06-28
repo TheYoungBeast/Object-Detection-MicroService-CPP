@@ -32,8 +32,11 @@ bool data_publisher::publish(unsigned src_id, const std::vector<detection>& resu
 {
     if(!is_declared(src_id))
         declare_exchange(src_id, this->prefix);
+
+    auto data = data_converter->convert(result);
+    AMQP::Envelope envelope(data);
     
-    return rabbitmq->publish(declared_exchanges[src_id], "", data_converter->convert(result) );
+    return rabbitmq->publish(declared_exchanges[src_id], "", envelope );
 }
 
 bool data_publisher::publish(unsigned src_id, const std::vector<detection>& results, unsigned limit)

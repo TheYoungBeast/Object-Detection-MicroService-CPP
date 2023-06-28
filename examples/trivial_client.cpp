@@ -136,8 +136,88 @@ int main()
         service.run();
     });
 
+    std::thread img_consumer = std::thread([&]()
+    {
+        boost::asio::io_service service(2);
+        AMQP::LibBoostAsioHandler handler(service);
+        AMQP::TcpConnection connection (&handler, AMQP::Address(amqp));
+        AMQP::TcpChannel channel (&connection);
+        static int counter = 0;
+
+        channel.declareExchange("processed-img-99", AMQP::ExchangeType::fanout);
+
+        channel.declareQueue(AMQP::exclusive).onSuccess([&](const std::string &name, uint32_t messagecount, uint32_t consumercount)
+        {
+            channel.bindQueue("processed-img-99", name, "");
+
+            auto& consumer = channel.consume(name);
+            consumer.onMessage([&](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
+            {
+                channel.ack(deliveryTag);
+
+                const std::string type = "imgtype";
+                auto& type_header = message.headers().get(type);
+
+                int imgtype = -1;
+
+                if(!type_header.isInteger()) {
+                    std::cerr << "Invalid or missing" << std::endl;
+                }
+                else imgtype = int(type_header);
+
+                int width = 0;
+                int height = 0;
+
+                const std::string width_field = "imgwidth";
+                auto& width_header = message.headers().get(width_field);
+
+                const std::string height_field = "imgheight";
+                auto& height_header = message.headers().get(height_field);
+
+                width = int(width_header);
+                    height = int(height_header);
+
+                std::shared_ptr<cv::Mat> decoded_frame = std::make_shared<cv::Mat>();
+
+                if(width <= 0 || height <= 0 || imgtype <= 0)
+                {
+                    std::cout << "Missing headers. Attempting to decode frame" << std::endl;
+
+                    cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
+                    decoded_frame = std::make_shared<cv::Mat>();
+                    cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decoded_frame.get());
+
+                    rawData.release();
+                }
+                else
+                {
+                    decoded_frame = std::make_shared<cv::Mat>(
+                        height, 
+                        width, 
+                        imgtype, 
+                        reinterpret_cast<void*>( const_cast<char*>(message.body())));
+                }
+
+                cv::imshow("preview", *decoded_frame);
+                // in case imshow won't pop up, save img to disk
+                cv::imwrite("preview.jpg", *decoded_frame);
+
+                counter++;
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+                if(counter == total_published) {
+                    service.stop();
+                }
+            });
+        });
+
+        service.run();
+    });
+
     publisher.join();
     consumer.join();
+    img_consumer.join();
 
     cv::destroyAllWindows();
     return 0;

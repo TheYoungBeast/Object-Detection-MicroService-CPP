@@ -59,10 +59,10 @@ std::thread basic_processing_service<T>::run_background_service()
 }
 
 template <typename T>
-T& basic_processing_service<T>::apply_results(T& img, const std::vector<detection>& results)
+void basic_processing_service<T>::apply_results(std::shared_ptr<T> img, const std::vector<detection>& results)
 {
     if(results.empty())
-        return img;
+        return;
     
     unsigned int counter = 0;
 
@@ -89,26 +89,26 @@ T& basic_processing_service<T>::apply_results(T& img, const std::vector<detectio
                 continue;
         }
 
+        auto& ref = *(img.get());
+
         auto box = detection.box;
         auto classId = detection.class_id;
         const auto& color = detection.color;
-        cv::rectangle(img, box, color, 3);
+        cv::rectangle(ref, box, color, 3);
         
         std::ostringstream stringStream;
         stringStream << detection.class_name << " - " << std::setprecision(4) << detection.confidence*100 << "%";
 
-        cv::rectangle(img, cv::Point(box.x, box.y - 20), cv::Point(box.x + box.width, box.y), color, cv::FILLED);
-        cv::putText(img,  stringStream.str(), cv::Point(box.x, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+        cv::rectangle(ref, cv::Point(box.x, box.y - 20), cv::Point(box.x + box.width, box.y), color, cv::FILLED);
+        cv::putText(ref,  stringStream.str(), cv::Point(box.x, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
     }
-
-    return img;
 }
 
 template <typename T>
 void basic_processing_service<T>::push_results(unsigned src_id, std::shared_ptr<T> frame, const std::vector<detection>& detections)
 {
     std::lock_guard lock(sync);
-    results.emplace(std::make_tuple(src_id, frame, detections));
+    results.push(std::make_tuple(src_id, frame, detections));
 }
 
 template<typename T>
@@ -144,8 +144,8 @@ void basic_processing_service<T>::run()
 
         if(frame_publisher)
         {
-            auto& result = this->apply_results(*frame, detections);
-            frame_publisher->publish_image(result, id);
+            //this->apply_results(frame, detections);
+            frame_publisher->publish_image(*(frame.get()), id);
         }
 
         std::unique_lock lock(sync);

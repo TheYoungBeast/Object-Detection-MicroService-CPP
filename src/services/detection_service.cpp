@@ -69,7 +69,7 @@ bool basic_detection_service<T>::try_add_to_queue(const unsigned source_id, std:
         return false;
     
     std::lock_guard lock(que_mutexes[source_id]);
-    queues[source_id].emplace(frame);
+    queues[source_id].push(frame);
 
     return true;
 }
@@ -115,9 +115,8 @@ void basic_detection_service<T>::run()
             if(!frame_ptr) 
                 continue;
             
-            auto&& results = model->object_detection(*frame_ptr);
-            model->apply_detections_on_image(*frame_ptr, results);
-            //cv::imwrite("view.jpg", *frame_ptr);
+            auto results = model->object_detection(*frame_ptr);
+            
             ++total_frames_processed;
 
             auto processing = processing_service::get_service_instance();
@@ -131,11 +130,12 @@ void basic_detection_service<T>::run()
             if(total_frames_processed % 60 == 0)
             {
                 spdlog::debug(
-                    "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps", 
+                    "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps \t{} frames", 
                     current_queue_id, 
                     queues[current_queue_id].size(), 
                     performance_meter.getAvgTimeMilli(), 
-                    performance_meter.getFPS());
+                    performance_meter.getFPS(),
+                    total_frames_processed);
             }
 
             std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
