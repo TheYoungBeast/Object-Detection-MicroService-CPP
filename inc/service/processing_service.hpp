@@ -41,7 +41,12 @@ class basic_processing_service : public background_service
     protected:
         basic_processing_service() = default;
 
-        T& apply_results(T& img, const std::vector<detection>& results);
+        /**
+         * @brief Applies results in place.
+         * @param img image
+         * @param results detections
+        */
+        void apply_results(std::shared_ptr<T> img, const std::vector<detection>& results);
 
         virtual void run() override;
 

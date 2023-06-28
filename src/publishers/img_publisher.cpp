@@ -10,6 +10,9 @@ basic_img_publisher<T>::basic_img_publisher(std::shared_ptr<rabbitmq_client>& _c
 template <typename T> 
 void basic_img_publisher<T>::publish_image(T& img, unsigned srcid)
 {
+    if(img.empty())
+        return;
+        
     int size = img.total() * img.elemSize();
     try
     {
