@@ -177,32 +177,49 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
         width = int(width_header);
         height = int(height_header);
 
-        auto decodedMat = new cv::Mat();
+        std::shared_ptr<cv::Mat> decoded_frame;
 
-        if(width <= 0 || height <= 0 || imgtype <= 0)
+        try
         {
-            spdlog::warn("Missing headers. Attempting to decode frame");
-            cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
-            auto decodedMat = new cv::Mat();
-            cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decodedMat);
-            
-        }
-        else {
-            *decodedMat = cv::Mat(height, width, imgtype, reinterpret_cast<void*>( const_cast<char*>(message.body())));
-        }
+            decoded_frame = std::make_shared<cv::Mat>();
 
+            if(width <= 0 || height <= 0 || imgtype <= 0)
+            {
+                spdlog::warn("Missing headers. Attempting to decode frame");
+                cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
+                decoded_frame = std::make_shared<cv::Mat>();
+                cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decoded_frame.get());
+                rawData.release();
+            }
+            else
+            {
+                decoded_frame = std::make_shared<cv::Mat>(
+                    height, 
+                    width, 
+                    imgtype, 
+                    reinterpret_cast<void*>( const_cast<char*>(message.body())));
+            }
 
-        if(decodedMat->empty())
-        {
-            spdlog::error("Could not decode image. Frame is empty");
-            cv::Mat blank = cv::Mat::zeros(640, 640, CV_8UC3);
-            blank.copyTo(*decodedMat);
-            blank.release();
+            if(decoded_frame->empty())
+            {
+                spdlog::error("Could not decode image. Frame is empty");
+                cv::Mat blank = cv::Mat::zeros(640, 640, CV_8UC3);
+                blank.copyTo(*decoded_frame);
+                blank.release();
+            }
+        }
+        catch(const std::bad_alloc& a) {
+            spdlog::critical(a.what());
+            return;
+        }
+        catch(const std::exception& e) {
+            spdlog::error(e.what());
+            return;
         }
 
         auto& service = detection_service::get_service_instance();
 
-        if(visitor->visit_new_frame(source_id, std::shared_ptr<cv::Mat>(decodedMat)))
+        if(visitor->visit_new_frame(source_id, decoded_frame))
            channel->ack(deliveryTag);
         
         return;
