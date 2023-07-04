@@ -8,19 +8,28 @@
 #include <unordered_set>
 #include <memory>
 
-// Boost
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/strand.hpp>
-#include <boost/asio/deadline_timer.hpp>
-
 // AMQP RabbitMQ
+#include <event2/event.h>
 #include <amqpcpp.h>
-#include <amqpcpp/envelope.h>
-#include <amqpcpp/libboostasio.h>
+#include <amqpcpp/libevent.h>
 
 // spdlog
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+class RabbitMqHandler : public AMQP::LibEventHandler
+{
+    public:
+        RabbitMqHandler(struct event_base* evbase) : LibEventHandler(evbase), evbase_(evbase_) {}
+
+        virtual void onHeartbeat(AMQP::TcpConnection *connection) {
+            connection->heartbeat();
+            spdlog::debug("heartbeat");
+        }
+
+    private:
+        struct event_base* evbase_ {nullptr};
+};
 
 
 /**
@@ -33,24 +42,25 @@ class message_bus_client
     using client_ref = message_bus_client&;
     
     private:
+        bool started = false;
+        bool valid = true;
+        event_base* evbase;
         AMQP::Address address;
-        unsigned runs = 0;
-        boost::asio::io_service m_service;
-        AMQP::LibBoostAsioHandler m_handler;
+        RabbitMqHandler m_handler;
 
     protected:
-        std::unique_ptr<AMQP::TcpConnection> m_connection;
-        std::unique_ptr<AMQP::TcpChannel> channel;
+        AMQP::TcpConnection* m_connection;
+        AMQP::TcpChannel* channel;
 
         std::unordered_map<std::string, std::string> m_binded_queues = std::unordered_map<std::string, std::string>();
 
     public:
         /** 
-         * Non-blocking message bus client using AMQP for RabbitMQ Server.
-         * Multithreaded boost handler (boost::asio::io_service)
+         * @param host e.g. "amqp://localhost"
+         * @note not thread-safe
          * @note avoid passing any non-owning objects
         */
-        message_bus_client(const std::string_view&, uint = 2);
+        message_bus_client(const std::string_view& host);
 
         std::thread client_run();
         
@@ -63,7 +73,7 @@ class message_bus_client
         bool publish(const std::string_view &exchange, const std::string_view &routingKey, const AMQP::Envelope &envelope, int flags = 0);
         bool publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags = 0);
 
-        virtual ~message_bus_client() = default;
+        virtual ~message_bus_client();
 
     private:
         void connection_init();

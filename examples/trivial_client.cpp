@@ -56,48 +56,53 @@ int main()
 
         channel.publish(AVB_SRC_EXCHANGE, "", json);
 
-        cv::VideoCapture cap(mp4);
+        cv::VideoCapture cap;
 
-        if(!cap.isOpened())
+        while(true)
         {
-            std::cerr << "Cannot open video file" << std::endl;
-            return -1;
-        }
+            cap.open(mp4);
 
-        static bool once = false;
-
-        while(cap.grab())
-        {
-            cv::Mat frame;
-            cap.read(frame);
-
-            if(frame.empty())
+            if(!cap.isOpened())
             {
-                std::cout << "EOF" << std::endl;
-                break;
+                std::cerr << "Cannot open video file" << std::endl;
+                return -1;
             }
-            
-            int size = frame.total() * frame.elemSize();
-            try
+
+            static bool once = false;
+
+            while(cap.grab())
             {
-                AMQP::Envelope envelope(reinterpret_cast<const char*>(frame.data), size);
+                cv::Mat frame;
+                cap.read(frame);
 
-                AMQP::Table table;
-                table.set("srcid", src_id);
-                table.set("imgtype", frame.type());
-                table.set("imgwidth", frame.cols);
-                table.set("imgheight", frame.rows);
-                envelope.setHeaders(table);
+                if(frame.empty())
+                {
+                    std::cout << "EOF" << std::endl;
+                    break;
+                }
+                
+                int size = frame.total() * frame.elemSize();
+                try
+                {
+                    AMQP::Envelope envelope(reinterpret_cast<const char*>(frame.data), size);
 
-                total_published++;
-                channel.publish(SRC_EXCHANGE, "", envelope);
-                this_thread::sleep_for(std::chrono::milliseconds(30));
+                    AMQP::Table table;
+                    table.set("srcid", src_id);
+                    table.set("imgtype", frame.type());
+                    table.set("imgwidth", frame.cols);
+                    table.set("imgheight", frame.rows);
+                    envelope.setHeaders(table);
+
+                    total_published++;
+                    channel.publish(SRC_EXCHANGE, "", envelope);
+                    this_thread::sleep_for(std::chrono::milliseconds(30));
+                }
+                catch(const std::exception& e) {
+                    std::cout << e.what() << std::endl;
+                }
+
+                frame.release();
             }
-            catch(const std::exception& e) {
-                std::cout << e.what() << std::endl;
-            }
-
-            frame.release();
         }
 
         std::cout << total_published << " frames published" << std::endl;
@@ -114,6 +119,8 @@ int main()
         AMQP::TcpConnection connection (&handler, AMQP::Address(amqp));
         AMQP::TcpChannel channel (&connection);
         static int counter = 0;
+
+        channel.declareExchange("detection-results-99");
 
         channel.declareQueue(AMQP::exclusive).onSuccess([&](const std::string &name, uint32_t messagecount, uint32_t consumercount)
         {
@@ -144,72 +151,75 @@ int main()
         AMQP::TcpChannel channel (&connection);
         static int counter = 0;
 
-        channel.declareExchange("processed-img-99", AMQP::ExchangeType::fanout);
-
-        channel.declareQueue(AMQP::exclusive).onSuccess([&](const std::string &name, uint32_t messagecount, uint32_t consumercount)
+        channel.declareExchange("processed-img-99", AMQP::ExchangeType::fanout)
+        .onSuccess([&]()
         {
-            channel.bindQueue("processed-img-99", name, "");
-
-            auto& consumer = channel.consume(name);
-            consumer.onMessage([&](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
+            channel.declareQueue(AMQP::exclusive).onSuccess([&](const std::string &name, uint32_t messagecount, uint32_t consumercount)
             {
-                channel.ack(deliveryTag);
+                channel.bindQueue("processed-img-99", name, "");
 
-                const std::string type = "imgtype";
-                auto& type_header = message.headers().get(type);
-
-                int imgtype = -1;
-
-                if(!type_header.isInteger()) {
-                    std::cerr << "Invalid or missing" << std::endl;
-                }
-                else imgtype = int(type_header);
-
-                int width = 0;
-                int height = 0;
-
-                const std::string width_field = "imgwidth";
-                auto& width_header = message.headers().get(width_field);
-
-                const std::string height_field = "imgheight";
-                auto& height_header = message.headers().get(height_field);
-
-                width = int(width_header);
-                    height = int(height_header);
-
-                std::shared_ptr<cv::Mat> decoded_frame = std::make_shared<cv::Mat>();
-
-                if(width <= 0 || height <= 0 || imgtype <= 0)
+                auto& consumer = channel.consume(name);
+                consumer.onMessage([&](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
                 {
-                    std::cout << "Missing headers. Attempting to decode frame" << std::endl;
+                    channel.ack(deliveryTag);
 
-                    cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
-                    decoded_frame = std::make_shared<cv::Mat>();
-                    cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decoded_frame.get());
+                    const std::string type = "imgtype";
+                    auto& type_header = message.headers().get(type);
 
-                    rawData.release();
-                }
-                else
-                {
-                    decoded_frame = std::make_shared<cv::Mat>(
-                        height, 
-                        width, 
-                        imgtype, 
-                        reinterpret_cast<void*>( const_cast<char*>(message.body())));
-                }
+                    int imgtype = -1;
 
-                cv::imshow("preview", *decoded_frame);
-                // in case imshow won't pop up, save img to disk
-                cv::imwrite("preview.jpg", *decoded_frame);
+                    if(!type_header.isInteger()) {
+                        std::cerr << "Invalid or missing" << std::endl;
+                    }
+                    else imgtype = int(type_header);
 
-                counter++;
+                    int width = 0;
+                    int height = 0;
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    const std::string width_field = "imgwidth";
+                    auto& width_header = message.headers().get(width_field);
 
-                if(counter == total_published) {
-                    service.stop();
-                }
+                    const std::string height_field = "imgheight";
+                    auto& height_header = message.headers().get(height_field);
+
+                    width = int(width_header);
+                        height = int(height_header);
+
+                    std::shared_ptr<cv::Mat> decoded_frame = std::make_shared<cv::Mat>();
+
+                    if(width <= 0 || height <= 0 || imgtype <= 0)
+                    {
+                        std::cout << "Missing headers. Attempting to decode frame" << std::endl;
+
+                        cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
+                        decoded_frame = std::make_shared<cv::Mat>();
+                        cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decoded_frame.get());
+
+                        rawData.release();
+                    }
+                    else
+                    {
+                        decoded_frame = std::make_shared<cv::Mat>(
+                            height, 
+                            width, 
+                            imgtype, 
+                            reinterpret_cast<void*>( const_cast<char*>(message.body())));
+                    }
+
+                    cv::imshow("preview", *decoded_frame);
+                    // in case imshow won't pop up, save img to disk
+                    cv::imwrite("preview.jpg", *decoded_frame);
+
+                    counter++;
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+                    if(counter == total_published) {
+                        service.stop();
+                    }
+                });
             });
+
         });
 
         service.run();
