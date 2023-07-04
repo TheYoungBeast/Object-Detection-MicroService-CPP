@@ -11,7 +11,7 @@ basic_detection_service<T>& basic_detection_service<T>::get_service_instance()
 template <typename T>
 std::thread basic_detection_service<T>::run_background_service()
 {
-    return std::thread([&](){ this->run(); });
+    return std::thread([this](){ this->run(); });
 }
 
 template <typename T>
@@ -105,7 +105,7 @@ void basic_detection_service<T>::run()
 
             current_queue_id = strategy->choose_next_queue(this->queues, current_queue_id);
 
-            if(queues[current_queue_id].empty())
+            if(queues.empty() || queues.at(current_queue_id).empty())
                 continue;
 
             performance_meter.start();
@@ -127,15 +127,16 @@ void basic_detection_service<T>::run()
             if(total_frames_processed == 1)
                 performance_meter.reset();
 
-            if(total_frames_processed % 60 == 0)
+            if(total_frames_processed % (int(performance_meter.getFPS())+1) == 0)
             {
                 spdlog::debug(
-                    "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps \t{} frames", 
+                    "que: {} \tque size: {} \tavg: {:.2f}ms \t{:.2f}fps \t{} frames \tques: {}", 
                     current_queue_id, 
                     queues[current_queue_id].size(), 
                     performance_meter.getAvgTimeMilli(), 
                     performance_meter.getFPS(),
-                    total_frames_processed);
+                    total_frames_processed,
+                    queues.size());
             }
 
             std::unique_lock lock(que_mutexes[current_queue_id]); // <-- locking queue
@@ -146,7 +147,7 @@ void basic_detection_service<T>::run()
             spdlog::error(e.what());
         }
         catch(const std::exception& e) {
-           spdlog::error(e.what());
+            spdlog::error(e.what());
         }
         catch(...) {
             spdlog::error("[Detection service]: Unknown Error");
@@ -177,8 +178,12 @@ bool basic_detection_service<T>::visit_new_frame(unsigned src_id, std::shared_pt
 template <typename T>
 unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id)
 {
+    /**
+     * It might be root of segfaults
+     * gotta investigate further
+    */
     auto it = std::max_element(q.begin(), q.end(), 
-    [](const std::pair<unsigned, std::queue<std::shared_ptr<T>>> q1, const std::pair<unsigned,std::queue<std::shared_ptr<T>>> q2) -> bool 
+    [](const std::pair<unsigned, std::queue<std::shared_ptr<T>>>& q1, const std::pair<unsigned, std::queue<std::shared_ptr<T>>>& q2) -> bool 
     {
         return q1.second.size() < q2.second.size();
     });
@@ -187,14 +192,14 @@ unsigned prioritize_load_strategy<T>::choose_next_queue(std::map<unsigned, std::
 }
 
 template <typename T>
-unsigned priotitize_order_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id)
+unsigned prioritize_order_strategy<T>::choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id)
 {
     auto it = q.find(current_queue_id);
 
     if(it == q.end())
         return (*q.begin()).first;
 
-    if(it++ != q.end())
+    if(++it != q.end())
         return (*it).first;
 
     return (*q.begin()).first;

@@ -20,7 +20,7 @@ template <typename T>
 class prioritize_load_strategy;
 
 template <typename T>
-class priotitize_order_strategy;
+class prioritize_order_strategy;
 
 typedef basic_detection_service<cv::Mat> detection_service;
 
@@ -63,7 +63,7 @@ class basic_detection_service : public background_service, public detection_serv
 
         std::mutex inference_mutex{};
         std::unique_ptr<detection_model> model{};
-        std::unique_ptr<processing_order_strategy<T>> strategy = std::unique_ptr<processing_order_strategy<T>>(new prioritize_load_strategy<T>());
+        std::unique_ptr<processing_order_strategy<T>> strategy = std::unique_ptr<processing_order_strategy<T>>(new prioritize_order_strategy<T>());
 
     protected:
         basic_detection_service() = default;
@@ -109,11 +109,11 @@ class prioritize_load_strategy : public basic_detection_service<T>::processing_o
 };
 
 template <typename T>
-class priotitize_order_strategy : public basic_detection_service<T>::processing_order_strategy<T>
+class prioritize_order_strategy : public basic_detection_service<T>::processing_order_strategy<T>
 {
     public:
-        priotitize_order_strategy() = default;
-        virtual ~priotitize_order_strategy() = default;
+        prioritize_order_strategy() = default;
+        virtual ~prioritize_order_strategy() = default;
         virtual unsigned choose_next_queue(std::map<unsigned, std::queue<std::shared_ptr<T>>>& q, unsigned current_queue_id) override;
 };
 
