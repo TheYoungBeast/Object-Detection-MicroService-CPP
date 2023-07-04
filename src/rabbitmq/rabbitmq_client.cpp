@@ -147,9 +147,11 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
         const std::string header = "srcid";
         auto& field = message.headers().get(header);
 
+        this->m_connection->heartbeat();
+
         if(!field.isInteger()) {
             spdlog::warn("Invalid or missing {} header. Attach {} header with source-id value to your message", header, header);
-           channel->ack(deliveryTag);
+            channel->ack(deliveryTag);
             return;
         }
 
@@ -161,7 +163,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
         int imgtype = -1;
 
         if(!type_header.isInteger()) {
-            spdlog::warn("Invalid or missing {} header.", type);
+            //spdlog::warn("Invalid or missing {} header.", type);
         }
         else imgtype = int(type_header);
 
@@ -185,7 +187,7 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
 
             if(width <= 0 || height <= 0 || imgtype <= 0)
             {
-                spdlog::warn("Missing headers. Attempting to decode frame");
+                //spdlog::warn("Missing headers. Attempting to decode frame");
                 cv::Mat rawData(1, message.bodySize(), CV_8SC1, (void*)message.body());
                 decoded_frame = std::make_shared<cv::Mat>();
                 cv::imdecode(rawData, cv::IMREAD_ANYCOLOR, decoded_frame.get());
@@ -207,6 +209,9 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
                 blank.copyTo(*decoded_frame);
                 blank.release();
             }
+
+            auto& service = detection_service::get_service_instance();
+            visitor->visit_new_frame(source_id, decoded_frame);
         }
         catch(const std::bad_alloc& a) {
             spdlog::critical(a.what());
@@ -216,12 +221,8 @@ AMQP::MessageCallback rabbitmq_client::new_frame_msg_callback(detection_service_
             spdlog::error(e.what());
             return;
         }
-
-        auto& service = detection_service::get_service_instance();
-
-        if(visitor->visit_new_frame(source_id, decoded_frame))
-           channel->ack(deliveryTag);
-        
+       
+        channel->ack(deliveryTag);
         return;
     };
 
