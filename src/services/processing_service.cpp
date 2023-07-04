@@ -145,7 +145,7 @@ void basic_processing_service<T>::run()
         if(frame_publisher)
         {
             //this->apply_results(frame, detections);
-            frame_publisher->publish_image(*(frame.get()), id);
+           // frame_publisher->publish_image(*(frame.get()), id);
         }
 
         std::unique_lock lock(sync);

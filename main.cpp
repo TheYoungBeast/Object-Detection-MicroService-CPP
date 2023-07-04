@@ -58,10 +58,10 @@ int main(int argc, const char** argv)
     boost::program_options::options_description desc("Options");
 
     desc.add_options()
-        ("type", boost::program_options::value<std::string>()->default_value("v8"), "AI model type e.g. v8, v5. Default: v8")
-        ("shape", boost::program_options::value<std::string>()->default_value("640x640"), "model shape (Width x Height) e.g. 640x640. Default: 640x640")
-        ("path", boost::program_options::value<std::string>(), "path to resources (models)")
-        ("model", boost::program_options::value<std::string>()->default_value("yolov8n.onnx"), "model name e.g. yolov8n.onnx. Default: yolov8n.onnx");
+        ("type",    boost::program_options::value<std::string>()->default_value("v8"), "AI model type e.g. v8, v5. Default: v8")
+        ("shape",   boost::program_options::value<std::string>()->default_value("640x640"), "model shape (Width x Height) e.g. 640x640. Default: 640x640")
+        ("path",    boost::program_options::value<std::string>(), "path to resources (models)")
+        ("model",   boost::program_options::value<std::string>()->default_value("yolov8n.onnx"), "model name e.g. yolov8n.onnx. Default: yolov8n.onnx");
 
     desc.print(std::cout);
 
@@ -219,12 +219,12 @@ int main(int argc, const char** argv)
     #pragma region PUBLISHER
 
     auto rabbitmq_publisher = std::make_shared<rabbitmq_client>(amqp_host);
-    auto rabbitmq_img_publisher = std::make_shared<rabbitmq_client>(amqp_host);
+    //auto rabbitmq_img_publisher = std::make_shared<rabbitmq_client>(amqp_host);
 
     auto publisher = std::make_shared<data_publisher>(rabbitmq_publisher);
     processing_service::get_service_instance()->set_data_publisher(publisher);
 
-    auto imgpublisher = std::make_shared<img_publisher>(rabbitmq_img_publisher);
+    auto imgpublisher = std::make_shared<img_publisher>(rabbitmq_publisher);
     processing_service::get_service_instance()->set_img_publisher(imgpublisher);
     
     #pragma endregion PUBLISHER
@@ -233,7 +233,7 @@ int main(int argc, const char** argv)
 
     rabbitmq_clients.emplace_back( rabbitmq->client_run() );
     rabbitmq_clients.emplace_back( rabbitmq_publisher->client_run() );
-    rabbitmq_clients.emplace_back( rabbitmq_img_publisher->client_run() );
+    //rabbitmq_clients.emplace_back( rabbitmq_img_publisher->client_run() );
 
     for(auto& client: rabbitmq_clients)
         client.join();

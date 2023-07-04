@@ -3,6 +3,11 @@ project(micro_od VERSION 0.1.0 LANGUAGES C CXX)
 
 set (CMAKE_CXX_STANDARD 17)
 
+add_compile_options(-fsanitize=undefined)
+add_link_options(-fsanitize=undefined)
+
+set(CMAKE_BUILD_TYPE Debug)
+
 include(CTest)
 enable_testing()
 
@@ -32,9 +37,10 @@ add_dependencies(micro_od amqpcpp)
 
 target_link_libraries( 
     micro_od
-    amqpcpp 
+    amqpcpp
+    event
     pthread 
-    dl 
+    dl
     ssl
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
