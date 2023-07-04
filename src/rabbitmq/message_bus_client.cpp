@@ -1,13 +1,24 @@
 #include "../inc/rabbitmq/message_bus_client.hpp"
 #include <future>
 
-message_bus_client::message_bus_client(const std::string_view& host, uint threads_hint)
+message_bus_client::message_bus_client(const std::string_view& host)
     : address( AMQP::Address(host.begin()) ),
-    m_service(threads_hint), 
-    m_handler(m_service)
+    evbase( event_base_new() ), 
+    m_handler(evbase),
+    m_connection( new AMQP::TcpConnection(&m_handler, address ) ),
+    channel( new AMQP::TcpChannel(m_connection) )
 {
-    connection_init();
-    channel_init();
+    channel->onError([this](const char* message) {
+        spdlog::error("AMQP channel error: {}", message);
+        // Recover channel here!
+        this->valid = false;
+    });
+}
+
+message_bus_client::~message_bus_client() {
+    event_base_free(evbase);
+    delete channel;
+    delete m_connection;
 }
 
 void message_bus_client::connection_init()
@@ -15,7 +26,7 @@ void message_bus_client::connection_init()
     if(m_connection && !m_connection->closed())
         m_connection->close();
 
-    m_connection = std::make_unique<AMQP::TcpConnection>(&m_handler, address );
+    //m_connection = std::make_unique<AMQP::TcpConnection>(&m_handler, address );
 }
 
 void message_bus_client::channel_init()
@@ -26,7 +37,7 @@ void message_bus_client::channel_init()
     if(channel && channel->usable())
         channel->close();
 
-    channel = std::make_unique<AMQP::TcpChannel>(m_connection.get());
+    //channel = std::make_unique<AMQP::TcpChannel>(m_connection.get());
 
     channel->onError([this](const char* message) {
         spdlog::error("AMQP channel error: {}", message);
@@ -36,13 +47,21 @@ void message_bus_client::channel_init()
 
 std::thread message_bus_client::client_run() 
 {
-    if(runs > 0)
-        throw std::runtime_error("Client_run() was called twice for the same client instance");
+    if(started)
+        throw std::runtime_error("client_run() was called twice for the same client instance");
 
-    runs++;
+    started = true;
 
-    return std::thread([&](){
-        m_service.run();
+    return std::thread([&]()
+    {
+        int ret = 0;
+        // -1 means error occured
+        while(ret != -1)
+        {
+            ret = event_base_dispatch(evbase);
+            //spdlog::info("Event dispatcher returned: {}", ret);
+            std::this_thread::yield();
+        }
     });
 }
 
@@ -118,10 +137,20 @@ message_bus_client& message_bus_client::add_listener(const std::string exchange,
 
 bool message_bus_client::publish(const std::string_view &exchange, const std::string_view &routingKey, const AMQP::Envelope &envelope, int flags)
 {
-    return this->channel->publish(exchange, routingKey, envelope, flags);
+    if(channel->usable())
+        return this->channel->publish(exchange, routingKey, envelope, flags);
+    else
+        spdlog::warn("Channel unusable");
+
+    return false;
 }
         
 bool message_bus_client::publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags)
 {
-    return this->publish(exchange, routingKey, AMQP::Envelope(message.data(), message.size()), flags);
+    if(channel->usable())
+        return this->publish(exchange, routingKey, AMQP::Envelope(message.data(), message.size()), flags);
+    else
+        spdlog::warn("Channel unusable");
+
+    return false;
 }
