@@ -35,7 +35,8 @@ RUN apt-get update && apt-get upgrade -y &&\
         libeigen3-dev \
         libtbb-dev \
         libgtk2.0-dev \
-        pkg-config
+        pkg-config \
+        libevent-dev
 		
 # Install Nvidia Container Toolkit
 RUN apt-get install -y nvidia-container-toolkit-base
