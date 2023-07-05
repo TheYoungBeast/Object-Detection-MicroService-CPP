@@ -18,12 +18,20 @@ find_package(
     COMPONENTS  json program_options REQUIRED)
 find_package(spdlog REQUIRED)
 
+# Add pkg-config functionality
+find_package(PkgConfig REQUIRED) 
+
+# search for libevent.pc
+pkg_search_module(EVENT REQUIRED libevent)
+
 include_directories( 
     ${OpenCV_INCLUDE_DIRS} 
     ${Boost_INCLUDE_DIRS} 
     ${amqpcpp_INCLUDE_DIRS} )
 
-include_directories(inc/)
+include_directories(
+    inc/
+    ${EVENT_INCLUDE_DIRS})
 
 file(GLOB_RECURSE SOURCES
     inc/*.h
@@ -44,6 +52,7 @@ target_link_libraries(
     ssl
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
+    ${EVENT_LIBRARIES}
     spdlog::spdlog_header_only )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
