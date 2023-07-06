@@ -36,6 +36,8 @@ int main()
     const std::string json = "{ \"id\": 99, \"exchange\": \"source-99\" }";
     auto total_published = 0;
 
+    bool interrupt = false;
+
     auto publisher = std::thread([&]()
     {
         boost::asio::io_service service(2);
@@ -58,7 +60,7 @@ int main()
 
         cv::VideoCapture cap;
 
-        while(true)
+        while(!interrupt)
         {
             cap.open(mp4);
 
@@ -70,7 +72,7 @@ int main()
 
             static bool once = false;
 
-            while(cap.grab())
+            while(cap.grab() && !interrupt)
             {
                 cv::Mat frame;
                 cap.read(frame);
@@ -130,10 +132,11 @@ int main()
             consumer.onMessage([&](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
             {
                 channel.ack(deliveryTag);
+
                 std::string str(message.body(), message.bodySize());
                 std::cout << ++counter << " frame results: \t" << str << std::endl;
 
-                if(counter == total_published) {
+                if(interrupt) {
                     service.stop();
                 }
             });
@@ -207,14 +210,12 @@ int main()
                     }
 
                     cv::imshow("preview", *decoded_frame);
-                    // in case imshow won't pop up, save img to disk
-                    cv::imwrite("preview.jpg", *decoded_frame);
 
                     counter++;
 
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    //std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-                    if(counter == total_published) {
+                    if(interrupt) {
                         service.stop();
                     }
                 });
@@ -224,6 +225,14 @@ int main()
 
         service.run();
     });
+
+    cv::namedWindow("preview");
+
+    // press any button to quit
+    while(cv::waitKey(1) == -1) 
+    {
+    }
+    interrupt = true;
 
     publisher.join();
     consumer.join();
