@@ -1,24 +1,16 @@
 #include "../inc/rabbitmq/message_bus_client.hpp"
 #include <future>
 
-message_bus_client::message_bus_client(const std::string_view& host)
-    : address( AMQP::Address(host.begin()) ),
+message_bus_client::message_bus_client(const std::string_view& host, const std::chrono::duration<int>& reconnect_it)
+    : reconnect_interval( reconnect_it ),
+    address( AMQP::Address(host.begin()) ),
     evbase( event_base_new() ), 
-    m_handler(evbase),
-    m_connection( new AMQP::TcpConnection(&m_handler, address ) ),
-    channel( new AMQP::TcpChannel(m_connection) )
+    m_handler( evbase.get() )
+    //m_connection( new AMQP::TcpConnection(&m_handler, address ) ),
+    //channel( std::make_unique<AMQP::TcpChannel> (m_connection.get()) )
 {
-    channel->onError([this](const char* message) {
-        spdlog::error("AMQP channel error: {}", message);
-        // Recover channel here!
-        this->valid = false;
-    });
-}
-
-message_bus_client::~message_bus_client() {
-    event_base_free(evbase);
-    delete channel;
-    delete m_connection;
+    this->connection_init();
+    this->channel_init();
 }
 
 void message_bus_client::connection_init()
@@ -26,22 +18,27 @@ void message_bus_client::connection_init()
     if(m_connection && !m_connection->closed())
         m_connection->close();
 
-    //m_connection = std::make_unique<AMQP::TcpConnection>(&m_handler, address );
+    m_connection = std::make_unique<AMQP::TcpConnection>(&m_handler, address );
+
+    this->channel_init();
 }
 
 void message_bus_client::channel_init()
 {
     if(!m_connection || m_connection->closed())
-        this->connection_init();
+        return;
 
     if(channel && channel->usable())
-        channel->close();
+        return;
 
-    //channel = std::make_unique<AMQP::TcpChannel>(m_connection.get());
+    channel = std::make_unique<AMQP::TcpChannel>( m_connection.get() );
 
     channel->onError([this](const char* message) {
         spdlog::error("AMQP channel error: {}", message);
-        // Recover channel here!
+    });
+
+    channel->onReady([](){
+        spdlog::info("Channel ready");
     });
 }
 
@@ -58,9 +55,14 @@ std::thread message_bus_client::client_run()
         // -1 means error occured
         while(ret != -1)
         {
-            ret = event_base_dispatch(evbase);
-            //spdlog::info("Event dispatcher returned: {}", ret);
-            std::this_thread::yield();
+            ret = event_base_dispatch( evbase.get() );
+
+            if(this->m_connection->closed() || !this->m_connection->usable() || !this->channel->usable())
+            {
+                std::this_thread::sleep_for(reconnect_interval);
+                spdlog::warn("Connection unusable. Reconnecting");
+                this->connection_init();
+            }
         }
     });
 }
