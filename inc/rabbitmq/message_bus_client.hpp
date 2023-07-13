@@ -17,6 +17,8 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include "action_storage.hpp"
+
 class RabbitMqHandler : public AMQP::LibEventHandler
 {
     public:
@@ -28,7 +30,6 @@ class RabbitMqHandler : public AMQP::LibEventHandler
         }
 
         virtual void onConnected(AMQP::TcpConnection* connection) override {
-            spdlog::info("Connection established");
             AMQP::LibEventHandler::onConnected(connection);
         }
 
@@ -59,7 +60,12 @@ class message_bus_client
     
     private:
         bool started = false;
+        bool isChannelReady = true;
+        bool isChannelInErrorState = false;
+        
         std::chrono::duration<int> reconnect_interval;
+        action_storage actions;
+
         std::unique_ptr<event_base, ev_base_deleter> evbase;
         AMQP::Address address;
         RabbitMqHandler m_handler;
@@ -93,6 +99,7 @@ class message_bus_client
         virtual ~message_bus_client() = default;
 
     private:
+        void restore();
         void connection_init();
         void channel_init();
 };
