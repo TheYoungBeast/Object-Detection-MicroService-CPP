@@ -20,4 +20,5 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     - name: Build the Docker image
-      run: docker build . --file dockerfile --tag my-image-name:$(date +%s)
+      # run: docker build . --file dockerfile --tag my-image-name:$(date +%s)
+      # docker/build-push-action@v2 will build it
