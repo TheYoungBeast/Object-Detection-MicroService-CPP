@@ -70,7 +70,7 @@ RUN cd /opt/ && \
 	git clone https://github.com/CopernicaMarketingSoftware/AMQP-CPP.git && \
 	cd AMQP-CPP && mkdir build && cd build && \
 	cmake .. -DAMQP-CPP_BUILD_SHARED=ON -DAMQP-CPP_LINUX_TCP=ON && \
-	cmake --build . --target install
+	cmake --build . --target install -j 10
 
 # Install spdlog
 RUN apt-get -y install libspdlog-dev
@@ -90,7 +90,7 @@ RUN mkdir app && cd /app/ && \
     cd Object-Detection-MicroService-CPP && \
     cp env.sh ~/ && \
     mkdir build && cd build && \
-    cmake .. && make && \
+    cmake .. && make -j 10 && \
 	cp micro_od /app/ && \
 	mkdir /models/ && \
 	cp ../assets/models/* /models/

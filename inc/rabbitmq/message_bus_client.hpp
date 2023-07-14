@@ -17,18 +17,35 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include "action_storage.hpp"
+
 class RabbitMqHandler : public AMQP::LibEventHandler
 {
     public:
         RabbitMqHandler(struct event_base* evbase) : LibEventHandler(evbase), evbase_(evbase_) {}
 
-        virtual void onHeartbeat(AMQP::TcpConnection *connection) {
+        virtual void onHeartbeat(AMQP::TcpConnection *connection) override {
             connection->heartbeat();
             spdlog::debug("heartbeat");
         }
 
+        virtual void onConnected(AMQP::TcpConnection* connection) override {
+            AMQP::LibEventHandler::onConnected(connection);
+        }
+
     private:
         struct event_base* evbase_ {nullptr};
+};
+
+/**
+ * @brief Custom deleter for unique_ptr<event_base>
+*/
+class ev_base_deleter
+{
+    public:
+        void operator() (event_base* eb) const {
+            event_base_free(eb);
+        }
 };
 
 
@@ -43,24 +60,30 @@ class message_bus_client
     
     private:
         bool started = false;
-        bool valid = true;
-        event_base* evbase;
+        bool isChannelReady = true;
+        bool isChannelInErrorState = false;
+        
+        std::chrono::duration<int> reconnect_interval;
+        action_storage actions;
+
+        std::unique_ptr<event_base, ev_base_deleter> evbase;
         AMQP::Address address;
         RabbitMqHandler m_handler;
 
     protected:
-        AMQP::TcpConnection* m_connection;
-        AMQP::TcpChannel* channel;
+        std::unique_ptr<AMQP::TcpConnection> m_connection;
+        std::unique_ptr<AMQP::TcpChannel> channel;
 
         std::unordered_map<std::string, std::string> m_binded_queues = std::unordered_map<std::string, std::string>();
 
     public:
         /** 
          * @param host e.g. "amqp://localhost"
+         * @param reconnect_interval The delay which the client will wait until trying to connect again.
          * @note not thread-safe
          * @note avoid passing any non-owning objects
         */
-        message_bus_client(const std::string_view& host);
+        message_bus_client(const std::string_view& host, const std::chrono::duration<int>& reconnect_interval = std::chrono::seconds(5));
 
         std::thread client_run();
         
@@ -73,9 +96,10 @@ class message_bus_client
         bool publish(const std::string_view &exchange, const std::string_view &routingKey, const AMQP::Envelope &envelope, int flags = 0);
         bool publish(const std::string_view &exchange, const std::string_view &routingKey, const std::string &message, int flags = 0);
 
-        virtual ~message_bus_client();
+        virtual ~message_bus_client() = default;
 
     private:
+        void restore();
         void connection_init();
         void channel_init();
 };

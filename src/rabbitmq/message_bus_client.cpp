@@ -1,48 +1,72 @@
 #include "../inc/rabbitmq/message_bus_client.hpp"
 #include <future>
 
-message_bus_client::message_bus_client(const std::string_view& host)
-    : address( AMQP::Address(host.begin()) ),
+message_bus_client::message_bus_client(const std::string_view& host, const std::chrono::duration<int>& reconnect_it)
+    : reconnect_interval( reconnect_it ),
+    address( AMQP::Address(host.begin()) ),
     evbase( event_base_new() ), 
-    m_handler(evbase),
-    m_connection( new AMQP::TcpConnection(&m_handler, address ) ),
-    channel( new AMQP::TcpChannel(m_connection) )
+    m_handler( evbase.get() )
+    //m_connection( new AMQP::TcpConnection(&m_handler, address ) ),
+    //channel( std::make_unique<AMQP::TcpChannel> (m_connection.get()) )
 {
-    channel->onError([this](const char* message) {
-        spdlog::error("AMQP channel error: {}", message);
-        // Recover channel here!
-        this->valid = false;
-    });
-}
-
-message_bus_client::~message_bus_client() {
-    event_base_free(evbase);
-    delete channel;
-    delete m_connection;
+    this->connection_init();
+    this->channel_init();
 }
 
 void message_bus_client::connection_init()
 {
-    if(m_connection && !m_connection->closed())
+    if(m_connection)
         m_connection->close();
 
-    //m_connection = std::make_unique<AMQP::TcpConnection>(&m_handler, address );
+    m_connection = std::make_unique<AMQP::TcpConnection>(&m_handler, address);
+
+    this->channel_init();
 }
 
 void message_bus_client::channel_init()
 {
     if(!m_connection || m_connection->closed())
-        this->connection_init();
+        return;
 
     if(channel && channel->usable())
-        channel->close();
+        return;
 
-    //channel = std::make_unique<AMQP::TcpChannel>(m_connection.get());
+    channel = std::make_unique<AMQP::TcpChannel>( m_connection.get() );
 
     channel->onError([this](const char* message) {
         spdlog::error("AMQP channel error: {}", message);
-        // Recover channel here!
+        this->isChannelInErrorState = true;
+        this->isChannelReady = false;
     });
+
+    channel->onReady([this](){
+        spdlog::info("Channel ready");
+        this->isChannelReady = true;
+
+        while(channel && isChannelInErrorState)
+            this->restore();
+    });
+}
+
+void message_bus_client::restore() 
+{
+    if(!isChannelInErrorState || !isChannelReady)
+        return;
+
+    auto actions_to_restore = actions.get_all();
+    actions.clear();
+    
+    auto size2 = actions_to_restore.size();
+    auto size = actions.size();
+
+    m_binded_queues.clear();
+
+    for(auto& action: actions_to_restore) {
+        action(); // invoke action
+    }
+
+    if(channel->usable() && isChannelReady)
+        isChannelInErrorState = false;
 }
 
 std::thread message_bus_client::client_run() 
@@ -56,17 +80,31 @@ std::thread message_bus_client::client_run()
     {
         int ret = 0;
         // -1 means error occured
+        // 0 Success
+        // 1 no events pending/active
         while(ret != -1)
         {
-            ret = event_base_dispatch(evbase);
-            //spdlog::info("Event dispatcher returned: {}", ret);
-            std::this_thread::yield();
+            ret = event_base_dispatch( evbase.get() );
+
+            if(isChannelInErrorState)
+            {
+                this->connection_init();
+                spdlog::warn("Connection failed. Restoring connectiong...");
+                std::this_thread::sleep_for(reconnect_interval);
+            }
         }
+
+        return ret;
     });
 }
 
 message_bus_client& message_bus_client::declare_exchange(const std::string& exchange_name, const AMQP::ExchangeType type)
 {
+    auto context = std::bind(&message_bus_client::declare_exchange, this, exchange_name, type);
+    std::function action = [=](){ context(); };
+
+    actions.push(action);
+
     this->channel->declareExchange(exchange_name, type)
         .onSuccess([=](){
             spdlog::info("Successfully declared {} exchange", exchange_name);
@@ -87,8 +125,18 @@ std::optional<const std::string> message_bus_client::get_binded_queue(const std:
 
     return it->second;
 }
+
 message_bus_client& message_bus_client::add_listener(const std::string exchange, const std::string queue, AMQP::MessageCallback callback, int flags)
 {
+    auto context = std::bind(
+        static_cast < message_bus_client&  (message_bus_client::*) (const std::string, const std::string, AMQP::MessageCallback, int) > // cast
+        (&message_bus_client::add_listener),  // method ptr
+        this, exchange, queue, callback, flags); 
+
+    std::function action = [=](){ context(); };
+
+    actions.push(action);
+
     this->channel->declareQueue(queue, flags)
         .onSuccess([&,exchange, callback](const std::string &name, uint32_t messagecount, uint32_t consumercount)
         {
@@ -113,6 +161,15 @@ message_bus_client& message_bus_client::add_listener(const std::string exchange,
 
 message_bus_client& message_bus_client::add_listener(const std::string exchange, AMQP::MessageCallback callback, int flags)
 {
+    auto context = std::bind(
+        static_cast < message_bus_client&  (message_bus_client::*) (const std::string, AMQP::MessageCallback, int) > // cast
+        (&message_bus_client::add_listener),  // method ptr
+        this, exchange, callback, flags); 
+
+    std::function action = [=](){ context(); };
+
+    actions.push(action);
+
     this->channel->declareQueue(flags)
         .onSuccess([&,exchange, callback](const std::string &name, uint32_t messagecount, uint32_t consumercount)
         {
